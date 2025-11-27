@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V2.1
+KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V2.2
 Deploy: Render.com | Updated: 2025-11-27
 - Added Pipedrive organization creation
 - Added file_url to deal notes
 - Fixed org_id linking for person and deal
+- Fixed bedrijf parsing (3rd text field, not 5th)
 """
 
 import os
@@ -175,15 +176,15 @@ def parse_typeform_data(webhook_data):
                         result['bedrijf'] = contact_info['company']
                     logger.info(f"✅ Found contact_info block")
 
-        # Process collected texts (first is usually voornaam, second achternaam, etc)
+        # Process collected texts (voornaam, achternaam, bedrijf order)
         if texts:
-            if len(texts) >= 1 and not result['voornaam'] or result['voornaam'] == 'daar':
+            if len(texts) >= 1 and (not result['voornaam'] or result['voornaam'] == 'daar'):
                 result['voornaam'] = texts[0]
                 result['contact'] = texts[0]
             if len(texts) >= 2:
                 result['contact'] = f"{texts[0]} {texts[1]}".strip()
-            if len(texts) >= 5:
-                result['bedrijf'] = texts[4]  # Usually 5th field is company
+            if len(texts) >= 3 and (not result['bedrijf'] or result['bedrijf'] == 'Onbekend'):
+                result['bedrijf'] = texts[2]  # 3rd text field is company
 
         logger.info(f"📋 Final: email={result['email']}, contact={result['contact']}, bedrijf={result['bedrijf']}")
 
@@ -298,7 +299,7 @@ def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="
 def health():
     return jsonify({
         "status": "healthy",
-        "version": "2.1",
+        "version": "2.2",
         "email": bool(GMAIL_APP_PASSWORD),
         "pipedrive": bool(PIPEDRIVE_API_TOKEN),
         "claude": bool(ANTHROPIC_API_KEY)
