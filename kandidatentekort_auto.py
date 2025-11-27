@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """
-KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION
+KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V2
 Deploy: Render.com | Updated: 2025-11-27
 """
 
-import os, json, logging, smtplib, requests
+import os
+import json
+import logging
+import smtplib
+import requests
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -15,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
+# Config
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 PIPEDRIVE_API_TOKEN = os.getenv('PIPEDRIVE_API_TOKEN')
 GMAIL_USER = os.getenv('GMAIL_USER', 'artsrecruitin@gmail.com')
@@ -22,6 +27,7 @@ GMAIL_APP_PASSWORD = os.getenv('GMAIL_APP_PASSWORD') or os.getenv('GMAIL_PASS')
 PIPEDRIVE_BASE = "https://api.pipedrive.com/v1"
 PIPELINE_ID = 4
 STAGE_ID = 21
+
 
 def get_confirmation_email_html(voornaam, bedrijf, functie):
     return f'''<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
@@ -53,6 +59,7 @@ def get_confirmation_email_html(voornaam, bedrijf, functie):
 © 2025 Kandidatentekort.nl | Recruitin B.V.</td></tr>
 </table></td></tr></table></body></html>'''
 
+
 def send_email(to_email, subject, html_body):
     logger.info(f"📧 Sending to: {to_email}")
     if not GMAIL_APP_PASSWORD:
@@ -75,146 +82,242 @@ def send_email(to_email, subject, html_body):
         logger.error(f"❌ Email failed: {e}")
         return False
 
+
 def send_confirmation_email(to_email, voornaam, bedrijf, functie):
-    return send_email(to_email, f"✅ Ontvangen: Vacature-analyse voor {functie}", get_confirmation_email_html(voornaam, bedrijf, functie))
+    return send_email(to_email, f"✅ Ontvangen: Vacature-analyse voor {functie}",
+                      get_confirmation_email_html(voornaam, bedrijf, functie))
+
 
 def parse_typeform_data(webhook_data):
-    """Parse Typeform webhook data - handles both regular fields and contact_info blocks"""
-    result = {'bedrijf':'Onbekend','contact':'Onbekend','voornaam':'daar','email':'','telefoon':'','vacature':'','functie':'vacature'}
+    """
+    Parse Typeform webhook - handles ALL field types robustly
+    """
+    result = {
+        'email': '',
+        'voornaam': 'daar',
+        'contact': 'Onbekend',
+        'telefoon': '',
+        'bedrijf': 'Onbekend',
+        'vacature': '',
+        'functie': 'vacature',
+        'sector': '',
+        'file_url': ''
+    }
+
     try:
-        answers = webhook_data.get('form_response',{}).get('answers',[])
-        logger.info(f"📋 Processing {len(answers)} answers")
+        form_response = webhook_data.get('form_response', {})
+        answers = form_response.get('answers', [])
+
+        logger.info(f"📋 Parsing {len(answers)} answers")
+
+        # Collect all values by type
+        texts = []  # All short_text values
 
         for i, answer in enumerate(answers):
-            # Skip non-dict answers
             if not isinstance(answer, dict):
-                logger.warning(f"Skipping non-dict answer {i}: {type(answer)}")
                 continue
 
             field = answer.get('field', {})
             if not isinstance(field, dict):
-                logger.warning(f"Skipping answer {i} with non-dict field: {type(field)}")
                 continue
 
             field_type = field.get('type', '')
-            ref = (field.get('ref', '') or '').lower()
+            field_id = field.get('id', '')
 
-            logger.info(f"📋 Answer {i}: type={field_type}, ref={ref}")
+            logger.info(f"📋 Answer {i}: type={field_type}, id={field_id}")
 
-            # Handle contact_info block (contains email, first_name, last_name, phone, company)
-            if field_type == 'contact_info' or 'contact_info' in answer:
+            # Extract value based on field type
+            if field_type == 'email':
+                result['email'] = answer.get('email', '')
+                logger.info(f"✅ Found email: {result['email']}")
+
+            elif field_type == 'phone_number':
+                result['telefoon'] = answer.get('phone_number', '')
+                logger.info(f"✅ Found phone: {result['telefoon']}")
+
+            elif field_type == 'short_text':
+                text = answer.get('text', '')
+                texts.append(text)
+                logger.info(f"📝 Found text: {text[:50]}...")
+
+            elif field_type == 'long_text':
+                text = answer.get('text', '')
+                result['vacature'] = text
+                result['functie'] = text.split('\n')[0][:50] if text else 'vacature'
+                logger.info(f"📝 Found long text (vacature)")
+
+            elif field_type == 'multiple_choice':
+                choice = answer.get('choice', {})
+                if isinstance(choice, dict):
+                    label = choice.get('label', '')
+                    if not result['sector']:
+                        result['sector'] = label
+                    logger.info(f"📝 Found choice: {label}")
+
+            elif field_type == 'file_upload':
+                result['file_url'] = answer.get('file_url', '')
+                logger.info(f"📎 Found file: {result['file_url'][:50]}...")
+
+            elif field_type == 'contact_info':
                 contact_info = answer.get('contact_info', {})
-                if isinstance(contact_info, dict) and contact_info:
-                    logger.info(f"📋 Found contact_info: {list(contact_info.keys())}")
+                if isinstance(contact_info, dict):
                     if contact_info.get('email'):
                         result['email'] = contact_info['email']
                     if contact_info.get('first_name'):
-                        first_name = contact_info.get('first_name', '')
-                        last_name = contact_info.get('last_name', '')
-                        full_name = f"{first_name} {last_name}".strip()
-                        result['contact'] = full_name
-                        result['voornaam'] = first_name or 'daar'
+                        result['voornaam'] = contact_info['first_name']
+                        result['contact'] = f"{contact_info.get('first_name', '')} {contact_info.get('last_name', '')}".strip()
                     if contact_info.get('phone_number'):
                         result['telefoon'] = contact_info['phone_number']
                     if contact_info.get('company'):
                         result['bedrijf'] = contact_info['company']
-                continue
+                    logger.info(f"✅ Found contact_info block")
 
-            # Handle regular fields - extract value based on answer type
-            v = ''
-            if 'text' in answer:
-                v = answer.get('text', '')
-            elif 'email' in answer:
-                v = answer.get('email', '')
-            elif 'phone_number' in answer:
-                v = answer.get('phone_number', '')
-            elif 'choice' in answer:
-                choice = answer.get('choice', {})
-                if isinstance(choice, dict):
-                    v = choice.get('label', '')
-            elif 'choices' in answer:
-                choices = answer.get('choices', [])
-                if isinstance(choices, list):
-                    v = ', '.join([c.get('label', '') for c in choices if isinstance(c, dict)])
-            elif 'file_url' in answer:
-                v = answer.get('file_url', '')
+        # Process collected texts (first is usually voornaam, second achternaam, etc)
+        if texts:
+            if len(texts) >= 1 and not result['voornaam'] or result['voornaam'] == 'daar':
+                result['voornaam'] = texts[0]
+                result['contact'] = texts[0]
+            if len(texts) >= 2:
+                result['contact'] = f"{texts[0]} {texts[1]}".strip()
+            if len(texts) >= 5:
+                result['bedrijf'] = texts[4]  # Usually 5th field is company
 
-            # First try to match by field_type (most reliable)
-            if field_type == 'email' and v:
-                result['email'] = v
-                logger.info(f"📋 Found email by type: {v}")
-                continue
-            elif field_type == 'phone_number' and v:
-                result['telefoon'] = v
-                logger.info(f"📋 Found phone by type: {v}")
-                continue
-
-            # Then try to match by ref keywords
-            if any(x in ref for x in ['bedrijf','company']): result['bedrijf'] = v
-            elif any(x in ref for x in ['naam','name','contact']): result['contact'] = v; result['voornaam'] = v.split()[0] if v else 'daar'
-            elif 'email' in ref: result['email'] = v
-            elif any(x in ref for x in ['telefoon','phone']): result['telefoon'] = v
-            elif any(x in ref for x in ['vacature','vacancy','tekst']): result['vacature'] = v; result['functie'] = v.split('\n')[0][:50] if v else 'vacature'
+        logger.info(f"📋 Final: email={result['email']}, contact={result['contact']}, bedrijf={result['bedrijf']}")
 
     except Exception as e:
-        logger.error(f"Parse error: {e}", exc_info=True)
+        logger.error(f"❌ Parse error: {e}", exc_info=True)
 
-    logger.info(f"📋 Parsed data: email={result['email']}, contact={result['contact']}, bedrijf={result['bedrijf']}")
     return result
 
-def create_pipedrive_person(contact, email, telefoon):
-    try:
-        r = requests.post(f"{PIPEDRIVE_BASE}/persons", params={"api_token":PIPEDRIVE_API_TOKEN}, json={"name":contact,"email":[{"value":email,"primary":True}],"phone":[{"value":telefoon,"primary":True}] if telefoon else []}, timeout=30)
-        return r.json().get('data',{}).get('id') if r.status_code==201 else None
-    except: return None
 
-def create_pipedrive_deal(title, person_id, vacature, analysis=""):
+def create_pipedrive_person(contact, email, telefoon):
+    if not PIPEDRIVE_API_TOKEN:
+        return None
     try:
-        r = requests.post(f"{PIPEDRIVE_BASE}/deals", params={"api_token":PIPEDRIVE_API_TOKEN}, json={"title":title,"person_id":person_id,"pipeline_id":PIPELINE_ID,"stage_id":STAGE_ID}, timeout=30)
-        if r.status_code==201:
-            deal_id = r.json().get('data',{}).get('id')
-            if vacature: requests.post(f"{PIPEDRIVE_BASE}/notes", params={"api_token":PIPEDRIVE_API_TOKEN}, json={"deal_id":deal_id,"content":f"📋 VACATURE:\n{vacature[:2000]}\n\n🤖 ANALYSE:\n{analysis}"}, timeout=30)
+        r = requests.post(
+            f"{PIPEDRIVE_BASE}/persons",
+            params={"api_token": PIPEDRIVE_API_TOKEN},
+            json={
+                "name": contact,
+                "email": [{"value": email, "primary": True}],
+                "phone": [{"value": telefoon, "primary": True}] if telefoon else []
+            },
+            timeout=30
+        )
+        return r.json().get('data', {}).get('id') if r.status_code == 201 else None
+    except Exception as e:
+        logger.error(f"Pipedrive person error: {e}")
+        return None
+
+
+def create_pipedrive_deal(title, person_id, vacature="", analysis=""):
+    if not PIPEDRIVE_API_TOKEN:
+        return None
+    try:
+        r = requests.post(
+            f"{PIPEDRIVE_BASE}/deals",
+            params={"api_token": PIPEDRIVE_API_TOKEN},
+            json={
+                "title": title,
+                "person_id": person_id,
+                "pipeline_id": PIPELINE_ID,
+                "stage_id": STAGE_ID
+            },
+            timeout=30
+        )
+        if r.status_code == 201:
+            deal_id = r.json().get('data', {}).get('id')
+            if vacature or analysis:
+                requests.post(
+                    f"{PIPEDRIVE_BASE}/notes",
+                    params={"api_token": PIPEDRIVE_API_TOKEN},
+                    json={
+                        "deal_id": deal_id,
+                        "content": f"📋 VACATURE:\n{vacature[:2000]}\n\n🤖 ANALYSE:\n{analysis}"
+                    },
+                    timeout=30
+                )
             return deal_id
-    except: pass
+    except Exception as e:
+        logger.error(f"Pipedrive deal error: {e}")
     return None
 
-def analyze_vacancy(vacature, bedrijf, functie):
-    if not ANTHROPIC_API_KEY or len(vacature)<50: return ""
-    try:
-        r = requests.post("https://api.anthropic.com/v1/messages", headers={"x-api-key":ANTHROPIC_API_KEY,"anthropic-version":"2023-06-01","content-type":"application/json"}, json={"model":"claude-sonnet-4-20250514","max_tokens":2000,"messages":[{"role":"user","content":f"Analyseer vacature {functie} bij {bedrijf}:\n{vacature[:8000]}\n\nGeef: 1.Score 0-100, 2.Top 3 verbeterpunten, 3.Samenvatting"}]}, timeout=60)
-        return r.json().get('content',[{}])[0].get('text','') if r.status_code==200 else ""
-    except: return ""
 
 @app.route("/", methods=["GET"])
-def health(): return jsonify({"status":"healthy","email":bool(GMAIL_APP_PASSWORD),"pipedrive":bool(PIPEDRIVE_API_TOKEN),"claude":bool(ANTHROPIC_API_KEY)}), 200
+def health():
+    return jsonify({
+        "status": "healthy",
+        "version": "2.0",
+        "email": bool(GMAIL_APP_PASSWORD),
+        "pipedrive": bool(PIPEDRIVE_API_TOKEN),
+        "claude": bool(ANTHROPIC_API_KEY)
+    }), 200
+
 
 @app.route("/webhook/typeform", methods=["POST"])
 def typeform_webhook():
     logger.info("🎯 WEBHOOK RECEIVED")
+
     try:
-        data = request.get_json()
-        logger.info(f"📥 Raw data keys: {list(data.keys()) if data else 'None'}")
+        data = request.get_json(force=True, silent=True) or {}
+        logger.info(f"📥 Keys: {list(data.keys())}")
 
+        # Parse the data
         p = parse_typeform_data(data)
-        if not p['email'] or '@' not in p['email']:
-            logger.error(f"❌ No valid email found. Parsed: {p}")
-            return jsonify({"error":"No email"}), 400
 
-        email_sent = send_confirmation_email(p['email'], p['voornaam'], p['bedrijf'], p['functie'])
+        # Validate email
+        if not p['email'] or '@' not in p['email']:
+            logger.error(f"❌ No email found in: {p}")
+            return jsonify({"error": "No email", "parsed": p}), 400
+
+        # Send confirmation email
+        email_sent = send_confirmation_email(
+            p['email'],
+            p['voornaam'],
+            p['bedrijf'],
+            p['functie']
+        )
+
+        # Create Pipedrive records
         person_id = create_pipedrive_person(p['contact'], p['email'], p['telefoon'])
-        analysis = analyze_vacancy(p['vacature'], p['bedrijf'], p['functie'])
-        deal_id = create_pipedrive_deal(f"Vacature Analyse - {p['functie']} - {p['bedrijf']}", person_id, p['vacature'], analysis)
+        deal_id = create_pipedrive_deal(
+            f"Vacature Analyse - {p['functie']} - {p['bedrijf']}",
+            person_id,
+            p['vacature']
+        )
+
         logger.info(f"✅ Done: email={email_sent}, person={person_id}, deal={deal_id}")
-        return jsonify({"success":True,"email_sent":email_sent,"person_id":person_id,"deal_id":deal_id}), 200
+
+        return jsonify({
+            "success": True,
+            "email_sent": email_sent,
+            "person_id": person_id,
+            "deal_id": deal_id
+        }), 200
+
     except Exception as e:
-        logger.error(f"❌ {e}")
-        return jsonify({"error":str(e)}), 500
+        logger.error(f"❌ Error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route("/test-email", methods=["GET"])
 def test_email():
-    to = request.args.get('to','artsrecruitin@gmail.com')
+    to = request.args.get('to', 'artsrecruitin@gmail.com')
     ok = send_confirmation_email(to, "Test", "Test Bedrijf", "Test Vacature")
-    return jsonify({"success":ok,"to":to}), 200 if ok else 500
+    return jsonify({"success": ok, "to": to}), 200 if ok else 500
+
+
+@app.route("/debug", methods=["POST"])
+def debug_webhook():
+    """Debug endpoint - returns what was received"""
+    data = request.get_json(force=True, silent=True) or {}
+    parsed = parse_typeform_data(data)
+    return jsonify({
+        "received_keys": list(data.keys()),
+        "parsed": parsed,
+        "raw_answers": data.get('form_response', {}).get('answers', [])
+    }), 200
+
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT",8080)))
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
