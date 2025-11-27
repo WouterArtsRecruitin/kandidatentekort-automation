@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V3.1
+KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V3.0
 Deploy: Render.com | Updated: 2025-11-27
-- V2: Pipedrive organization, person, deal creation
-- V3: Claude AI vacancy analysis + report email
-- V3.1: Professional report template with Before/After comparison
-- V3.1: Score visualization with color coding
-- V3.1: Improved design matching Recruitin brand guidelines
+- Added Pipedrive organization creation
+- Added file_url to deal notes
+- Fixed org_id linking for person and deal
+- Fixed bedrijf parsing (3rd text field, not 5th)
+- V3: Added Claude AI vacancy analysis
+- V3: Added analysis report email with improved vacancy text
 """
 
 import os
@@ -168,159 +169,83 @@ BELANGRIJK: Antwoord ALLEEN met valid JSON, geen tekst ervoor of erna."""
         return None
 
 
-def get_analysis_email_html(voornaam, bedrijf, analysis, original_text=""):
-    """Generate the professional analysis report email HTML with before/after comparison"""
+def get_analysis_email_html(voornaam, bedrijf, analysis):
+    """Generate the analysis report email HTML"""
     score = analysis.get('overall_score', 'N/A')
     score_section = analysis.get('score_section', '')
     improvements = analysis.get('top_3_improvements', [])
     improved_text = analysis.get('improved_text', '')
     bonus_tips = analysis.get('bonus_tips', [])
 
-    improvements_html = ''.join([f'<li style="margin-bottom:12px;padding-left:8px;">{imp}</li>' for imp in improvements])
-    tips_html = ''.join([f'<li style="margin-bottom:12px;padding-left:8px;">{tip}</li>' for tip in bonus_tips])
-
-    # Truncate original text for display
-    original_display = original_text[:800] + '...' if len(original_text) > 800 else original_text
-
-    # Calculate score color
-    if isinstance(score, (int, float)):
-        if score >= 7.5:
-            score_color = "#10B981"  # Green
-            score_label = "Uitstekend"
-        elif score >= 5.5:
-            score_color = "#F59E0B"  # Amber
-            score_label = "Goed"
-        else:
-            score_color = "#EF4444"  # Red
-            score_label = "Verbetering nodig"
-    else:
-        score_color = "#1E3A8A"
-        score_label = ""
+    improvements_html = ''.join([f'<li style="margin-bottom:10px;">{imp}</li>' for imp in improvements])
+    tips_html = ''.join([f'<li style="margin-bottom:10px;">{tip}</li>' for tip in bonus_tips])
 
     return f'''<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:linear-gradient(135deg,#f9fafb 0%,#ffffff 100%);">
+<body style="margin:0;padding:0;font-family:Inter,-apple-system,sans-serif;background:#f9fafb;">
 <table width="100%" style="padding:40px 20px;"><tr><td align="center">
-<table width="650" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:20px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);overflow:hidden;">
+<table width="600" style="background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(44,62,80,0.12);">
 
-<!-- HEADER with Logo -->
-<tr><td style="background:linear-gradient(135deg,#1E3A8A 0%,#3B82F6 100%);padding:40px 35px;text-align:center;position:relative;">
-<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td width="70" style="vertical-align:middle;">
-<div style="width:60px;height:60px;background:linear-gradient(135deg,#FF6B35,#FF8F65);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:white;box-shadow:0 8px 32px rgba(255,107,53,0.4);line-height:60px;text-align:center;">R</div>
-</td>
-<td style="vertical-align:middle;text-align:left;padding-left:16px;">
-<div style="color:white;font-size:22px;font-weight:700;">RECRUITIN</div>
-<div style="color:rgba(255,255,255,0.9);font-size:13px;">Vacature Analyse Rapport</div>
-</td>
-</tr></table>
-<div style="margin-top:30px;">
-<div style="color:white;font-size:32px;font-weight:800;letter-spacing:-0.5px;">📊 VACATURE ANALYSE RAPPORT</div>
-<div style="color:rgba(255,255,255,0.9);font-size:16px;margin-top:8px;">AI-powered analyse voor {bedrijf}</div>
+<tr><td style="background:linear-gradient(135deg,#1e3a5f,#2d5a87);color:#fff;padding:40px 30px;text-align:center;">
+<div style="font-size:28px;font-weight:800;">🎯 Jouw Vacature-Analyse is Klaar!</div>
+<div style="font-size:16px;opacity:0.95;margin-top:10px;">AI-powered analyse voor {bedrijf}</div></td></tr>
+
+<tr><td style="padding:35px 30px;">
+<p style="font-size:19px;font-weight:700;margin-top:0;">Hoi {voornaam},</p>
+<p style="color:#374151;">Bedankt voor het uploaden van je vacature via <strong>kandidatentekort.nl</strong>! Hieronder vind je mijn complete analyse:</p>
+
+<!-- Score Box -->
+<div style="background:#f0f4f8;border-left:5px solid #2d5a87;border-radius:0 12px 12px 0;padding:20px;margin:25px 0;">
+<div style="font-size:18px;font-weight:700;color:#1e3a5f;">📊 SCORE: {score}/10</div>
+<p style="color:#374151;margin:10px 0 0 0;">{score_section}</p>
 </div>
+
+<!-- Top 3 Verbeterpunten -->
+<div style="background:#fff3e0;border-left:5px solid #e67e22;border-radius:0 12px 12px 0;padding:20px;margin:25px 0;">
+<div style="font-size:18px;font-weight:700;color:#e67e22;">🎯 TOP 3 VERBETERPUNTEN</div>
+<ol style="color:#374151;padding-left:20px;margin:15px 0 0 0;">{improvements_html}</ol>
+</div>
+
+<!-- Verbeterde Tekst -->
+<div style="background:#e8f5e9;border-left:5px solid #27ae60;border-radius:0 12px 12px 0;padding:20px;margin:25px 0;">
+<div style="font-size:18px;font-weight:700;color:#27ae60;">✍️ VERBETERDE VACATURETEKST</div>
+<div style="background:#f5f5f5;padding:15px;border-radius:8px;margin-top:15px;white-space:pre-wrap;font-size:14px;color:#374151;line-height:1.6;">{improved_text}</div>
+</div>
+
+<!-- Bonus Tips -->
+<div style="background:#f3e5f5;border-left:5px solid #9b59b6;border-radius:0 12px 12px 0;padding:20px;margin:25px 0;">
+<div style="font-size:18px;font-weight:700;color:#9b59b6;">💡 BONUS TIPS</div>
+<ul style="color:#374151;padding-left:20px;margin:15px 0 0 0;">{tips_html}</ul>
+</div>
+
+<!-- CTA Section -->
+<div style="background:#1e3a5f;color:#fff;padding:25px;border-radius:12px;margin:30px 0;text-align:center;">
+<div style="font-size:18px;font-weight:700;margin-bottom:10px;">Wil je meer halen uit je recruitment?</div>
+<p style="margin:0 0 20px 0;opacity:0.9;">Plan een gratis adviesgesprek van 30 minuten.</p>
+<a href="https://calendly.com/wouter-arts-/vacature-analyse-advies" style="display:inline-block;background:#27ae60;color:#fff;padding:15px 30px;text-decoration:none;border-radius:8px;font-weight:700;margin:5px;">📅 Plan Adviesgesprek</a>
+<a href="https://wa.me/31614314593?text=Hoi%20Wouter,%20ik%20heb%20mijn%20vacature-analyse%20ontvangen!" style="display:inline-block;background:#25D366;color:#fff;padding:15px 30px;text-decoration:none;border-radius:8px;font-weight:700;margin:5px;">💬 WhatsApp</a>
+</div>
+
 </td></tr>
 
-<!-- HERO SCORE SECTION -->
-<tr><td style="padding:50px 35px;text-align:center;background:linear-gradient(135deg,#f9fafb 0%,white 100%);">
-<div style="display:inline-block;position:relative;width:180px;height:180px;margin-bottom:25px;">
-<div style="width:100%;height:100%;border-radius:50%;background:conic-gradient({score_color} 0deg {float(score) * 36 if isinstance(score, (int, float)) else 180}deg,#E5E7EB {float(score) * 36 if isinstance(score, (int, float)) else 180}deg 360deg);padding:10px;box-sizing:border-box;">
-<div style="width:100%;height:100%;background:white;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 8px 32px rgba(0,0,0,0.1);">
-<div style="font-size:56px;font-weight:800;color:{score_color};line-height:1;">{score}</div>
-<div style="font-size:16px;color:#6B7280;font-weight:500;">/10</div>
-</div>
-</div>
-</div>
-<div style="font-size:20px;font-weight:600;color:#1F2937;margin-bottom:8px;">{score_label}</div>
-<div style="font-size:14px;color:#6B7280;max-width:400px;margin:0 auto;">{score_section}</div>
-</td></tr>
+<tr><td style="padding:0 30px 35px;border-top:1px solid #f1f3f4;">
+<table style="padding-top:25px;"><tr><td>
+<p style="margin:0 0 5px;font-weight:700;color:#2c3e50;">Wouter Arts</p>
+<p style="margin:0;color:#6b7280;font-size:14px;">Founder & Recruitment Specialist</p>
+<p style="margin:0;color:#ff6b35;font-size:14px;font-weight:600;">Kandidatentekort.nl</p>
+</td></tr></table></td></tr>
 
-<!-- INTRO -->
-<tr><td style="padding:0 35px 30px;">
-<p style="font-size:18px;font-weight:700;color:#1F2937;margin:0 0 15px 0;">Hoi {voornaam},</p>
-<p style="color:#4B5563;line-height:1.7;margin:0;">Bedankt voor het uploaden van je vacature via <strong style="color:#FF6B35;">kandidatentekort.nl</strong>! Onze AI heeft je vacaturetekst grondig geanalyseerd. Hieronder vind je de complete resultaten:</p>
-</td></tr>
-
-<!-- TOP 3 VERBETERPUNTEN -->
-<tr><td style="padding:0 35px 30px;">
-<div style="background:linear-gradient(135deg,#FFFBEB 0%,#FEF3C7 100%);border-radius:16px;padding:25px;border:2px solid #F59E0B;">
-<div style="display:flex;align-items:center;margin-bottom:15px;">
-<div style="width:44px;height:44px;background:linear-gradient(135deg,#F59E0B,#FBBF24);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-right:15px;line-height:44px;text-align:center;">🎯</div>
-<div style="font-size:18px;font-weight:700;color:#92400E;">TOP 3 VERBETERPUNTEN</div>
-</div>
-<ol style="color:#78350F;padding-left:20px;margin:0;line-height:1.8;">{improvements_html}</ol>
-</div>
-</td></tr>
-
-<!-- BEFORE/AFTER COMPARISON -->
-<tr><td style="padding:0 35px 30px;">
-<div style="font-size:18px;font-weight:700;color:#1F2937;margin-bottom:20px;text-align:center;">📝 BEFORE & AFTER VERGELIJKING</div>
-<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td width="48%" style="vertical-align:top;">
-<div style="background:#FEE2E2;border-radius:12px;padding:20px;border:2px solid #EF4444;">
-<div style="font-size:14px;font-weight:700;color:#DC2626;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px;">❌ VOOR (Origineel)</div>
-<div style="background:white;padding:15px;border-radius:8px;font-size:13px;color:#4B5563;line-height:1.6;max-height:250px;overflow:hidden;">{original_display}</div>
-</div>
-</td>
-<td width="4%"></td>
-<td width="48%" style="vertical-align:top;">
-<div style="background:#D1FAE5;border-radius:12px;padding:20px;border:2px solid #10B981;">
-<div style="font-size:14px;font-weight:700;color:#059669;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px;">✅ NA (Geoptimaliseerd)</div>
-<div style="background:white;padding:15px;border-radius:8px;font-size:13px;color:#4B5563;line-height:1.6;max-height:250px;overflow:hidden;">{improved_text[:800]}...</div>
-</div>
-</td>
-</tr></table>
-</td></tr>
-
-<!-- FULL IMPROVED TEXT -->
-<tr><td style="padding:0 35px 30px;">
-<div style="background:linear-gradient(135deg,#ECFDF5 0%,#D1FAE5 100%);border-radius:16px;padding:25px;border:2px solid #10B981;">
-<div style="display:flex;align-items:center;margin-bottom:15px;">
-<div style="width:44px;height:44px;background:linear-gradient(135deg,#10B981,#34D399);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-right:15px;line-height:44px;text-align:center;">✍️</div>
-<div style="font-size:18px;font-weight:700;color:#065F46;">VOLLEDIGE VERBETERDE VACATURETEKST</div>
-</div>
-<div style="background:white;padding:20px;border-radius:12px;font-size:14px;color:#374151;line-height:1.8;white-space:pre-wrap;">{improved_text}</div>
-</div>
-</td></tr>
-
-<!-- BONUS TIPS -->
-<tr><td style="padding:0 35px 30px;">
-<div style="background:linear-gradient(135deg,#F3E8FF 0%,#E9D5FF 100%);border-radius:16px;padding:25px;border:2px solid #8B5CF6;">
-<div style="display:flex;align-items:center;margin-bottom:15px;">
-<div style="width:44px;height:44px;background:linear-gradient(135deg,#8B5CF6,#A78BFA);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-right:15px;line-height:44px;text-align:center;">💡</div>
-<div style="font-size:18px;font-weight:700;color:#5B21B6;">BONUS TIPS</div>
-</div>
-<ul style="color:#4C1D95;padding-left:20px;margin:0;line-height:1.8;">{tips_html}</ul>
-</div>
-</td></tr>
-
-<!-- CTA SECTION -->
-<tr><td style="padding:0 35px 40px;">
-<div style="background:linear-gradient(135deg,#1E3A8A 0%,#3B82F6 100%);border-radius:16px;padding:35px;text-align:center;">
-<div style="font-size:22px;font-weight:700;color:white;margin-bottom:10px;">Wil je meer halen uit je recruitment?</div>
-<p style="color:rgba(255,255,255,0.9);margin:0 0 25px 0;font-size:15px;">Plan een gratis adviesgesprek van 30 minuten met een recruitment specialist.</p>
-<a href="https://calendly.com/wouter-arts-/vacature-analyse-advies" style="display:inline-block;background:#10B981;color:white;padding:16px 32px;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;margin:5px;box-shadow:0 4px 15px rgba(16,185,129,0.4);">📅 Plan Adviesgesprek</a>
-<a href="https://wa.me/31614314593?text=Hoi%20Wouter,%20ik%20heb%20mijn%20vacature-analyse%20ontvangen!" style="display:inline-block;background:#25D366;color:white;padding:16px 32px;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;margin:5px;box-shadow:0 4px 15px rgba(37,211,102,0.4);">💬 WhatsApp Direct</a>
-</div>
-</td></tr>
-
-<!-- FOOTER -->
-<tr><td style="background:#1F2937;padding:30px 35px;text-align:center;">
-<p style="margin:0 0 5px;font-weight:700;color:white;font-size:16px;">Wouter Arts</p>
-<p style="margin:0 0 5px;color:rgba(255,255,255,0.7);font-size:13px;">Founder & Recruitment Specialist</p>
-<p style="margin:0 0 15px;color:#FF6B35;font-size:14px;font-weight:600;">Kandidatentekort.nl</p>
-<div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:15px;margin-top:15px;">
-<p style="margin:0;color:rgba(255,255,255,0.5);font-size:11px;">© 2025 Kandidatentekort.nl | Recruitin B.V. | 📞 06-14314593 | 📧 wouter@recruitin.nl</p>
-</div>
-</td></tr>
+<tr><td style="background:#2c3e50;color:#fff;padding:20px 30px;text-align:center;font-size:12px;">
+© 2025 Kandidatentekort.nl | Recruitin B.V.</td></tr>
 
 </table></td></tr></table></body></html>'''
 
 
-def send_analysis_email(to_email, voornaam, bedrijf, analysis, original_text=""):
+def send_analysis_email(to_email, voornaam, bedrijf, analysis):
     """Send the vacancy analysis report email"""
     return send_email(
         to_email,
         f"🎯 Jouw Vacature-Analyse voor {bedrijf} is Klaar!",
-        get_analysis_email_html(voornaam, bedrijf, analysis, original_text)
+        get_analysis_email_html(voornaam, bedrijf, analysis)
     )
 
 
@@ -531,7 +456,7 @@ def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="
 def health():
     return jsonify({
         "status": "healthy",
-        "version": "3.1",
+        "version": "3.0",
         "email": bool(GMAIL_APP_PASSWORD),
         "pipedrive": bool(PIPEDRIVE_API_TOKEN),
         "claude": bool(ANTHROPIC_API_KEY)
@@ -568,7 +493,7 @@ def typeform_webhook():
         if p['vacature'] and len(p['vacature']) > 50:
             analysis = analyze_vacancy_with_claude(p['vacature'], p['bedrijf'], p['sector'])
             if analysis:
-                analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], analysis, p['vacature'])
+                analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], analysis)
 
         # Build analysis summary for Pipedrive notes
         analysis_summary = ""
