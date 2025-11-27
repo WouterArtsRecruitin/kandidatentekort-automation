@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
-KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V2
+KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V2.1
 Deploy: Render.com | Updated: 2025-11-27
+- Added Pipedrive organization creation
+- Added file_url to deal notes
+- Fixed org_id linking for person and deal
 """
 
 import os
@@ -190,54 +193,102 @@ def parse_typeform_data(webhook_data):
     return result
 
 
-def create_pipedrive_person(contact, email, telefoon):
+def create_pipedrive_organization(name):
+    """Create organization in Pipedrive"""
+    if not PIPEDRIVE_API_TOKEN or not name or name == 'Onbekend':
+        return None
+    try:
+        r = requests.post(
+            f"{PIPEDRIVE_BASE}/organizations",
+            params={"api_token": PIPEDRIVE_API_TOKEN},
+            json={"name": name},
+            timeout=30
+        )
+        if r.status_code == 201:
+            org_id = r.json().get('data', {}).get('id')
+            logger.info(f"✅ Created organization: {name} (ID: {org_id})")
+            return org_id
+        else:
+            logger.warning(f"Org creation failed: {r.status_code} - {r.text[:200]}")
+    except Exception as e:
+        logger.error(f"Pipedrive org error: {e}")
+    return None
+
+
+def create_pipedrive_person(contact, email, telefoon, org_id=None):
     if not PIPEDRIVE_API_TOKEN:
         return None
     try:
+        data = {
+            "name": contact,
+            "email": [{"value": email, "primary": True}],
+            "phone": [{"value": telefoon, "primary": True}] if telefoon else []
+        }
+        if org_id:
+            data["org_id"] = org_id
+
         r = requests.post(
             f"{PIPEDRIVE_BASE}/persons",
             params={"api_token": PIPEDRIVE_API_TOKEN},
-            json={
-                "name": contact,
-                "email": [{"value": email, "primary": True}],
-                "phone": [{"value": telefoon, "primary": True}] if telefoon else []
-            },
+            json=data,
             timeout=30
         )
-        return r.json().get('data', {}).get('id') if r.status_code == 201 else None
+        if r.status_code == 201:
+            person_id = r.json().get('data', {}).get('id')
+            logger.info(f"✅ Created person: {contact} (ID: {person_id})")
+            return person_id
+        else:
+            logger.warning(f"Person creation failed: {r.status_code} - {r.text[:200]}")
     except Exception as e:
         logger.error(f"Pipedrive person error: {e}")
-        return None
+    return None
 
 
-def create_pipedrive_deal(title, person_id, vacature="", analysis=""):
+def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="", analysis=""):
     if not PIPEDRIVE_API_TOKEN:
         return None
     try:
+        deal_data = {
+            "title": title,
+            "person_id": person_id,
+            "pipeline_id": PIPELINE_ID,
+            "stage_id": STAGE_ID
+        }
+        if org_id:
+            deal_data["org_id"] = org_id
+
         r = requests.post(
             f"{PIPEDRIVE_BASE}/deals",
             params={"api_token": PIPEDRIVE_API_TOKEN},
-            json={
-                "title": title,
-                "person_id": person_id,
-                "pipeline_id": PIPELINE_ID,
-                "stage_id": STAGE_ID
-            },
+            json=deal_data,
             timeout=30
         )
         if r.status_code == 201:
             deal_id = r.json().get('data', {}).get('id')
-            if vacature or analysis:
+            logger.info(f"✅ Created deal: {title} (ID: {deal_id})")
+
+            # Build note content
+            note_parts = []
+            if vacature:
+                note_parts.append(f"📋 VACATURE:\n{vacature[:2000]}")
+            if file_url:
+                note_parts.append(f"📎 BESTAND:\n{file_url}")
+            if analysis:
+                note_parts.append(f"🤖 ANALYSE:\n{analysis}")
+
+            if note_parts:
                 requests.post(
                     f"{PIPEDRIVE_BASE}/notes",
                     params={"api_token": PIPEDRIVE_API_TOKEN},
                     json={
                         "deal_id": deal_id,
-                        "content": f"📋 VACATURE:\n{vacature[:2000]}\n\n🤖 ANALYSE:\n{analysis}"
+                        "content": "\n\n".join(note_parts)
                     },
                     timeout=30
                 )
             return deal_id
+        else:
+            logger.warning(f"Deal creation failed: {r.status_code} - {r.text[:200]}")
     except Exception as e:
         logger.error(f"Pipedrive deal error: {e}")
     return None
@@ -247,7 +298,7 @@ def create_pipedrive_deal(title, person_id, vacature="", analysis=""):
 def health():
     return jsonify({
         "status": "healthy",
-        "version": "2.0",
+        "version": "2.1",
         "email": bool(GMAIL_APP_PASSWORD),
         "pipedrive": bool(PIPEDRIVE_API_TOKEN),
         "claude": bool(ANTHROPIC_API_KEY)
@@ -278,19 +329,23 @@ def typeform_webhook():
             p['functie']
         )
 
-        # Create Pipedrive records
-        person_id = create_pipedrive_person(p['contact'], p['email'], p['telefoon'])
+        # Create Pipedrive records (organization first, then person, then deal)
+        org_id = create_pipedrive_organization(p['bedrijf'])
+        person_id = create_pipedrive_person(p['contact'], p['email'], p['telefoon'], org_id)
         deal_id = create_pipedrive_deal(
             f"Vacature Analyse - {p['functie']} - {p['bedrijf']}",
             person_id,
-            p['vacature']
+            org_id,
+            p['vacature'],
+            p['file_url']
         )
 
-        logger.info(f"✅ Done: email={email_sent}, person={person_id}, deal={deal_id}")
+        logger.info(f"✅ Done: email={email_sent}, org={org_id}, person={person_id}, deal={deal_id}")
 
         return jsonify({
             "success": True,
             "email_sent": email_sent,
+            "org_id": org_id,
             "person_id": person_id,
             "deal_id": deal_id
         }), 200
