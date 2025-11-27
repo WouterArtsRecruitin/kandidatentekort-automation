@@ -120,7 +120,7 @@ def parse_typeform_data(webhook_data):
                         result['bedrijf'] = contact_info['company']
                 continue
 
-            # Handle regular fields
+            # Handle regular fields - extract value based on answer type
             v = ''
             if 'text' in answer:
                 v = answer.get('text', '')
@@ -139,6 +139,17 @@ def parse_typeform_data(webhook_data):
             elif 'file_url' in answer:
                 v = answer.get('file_url', '')
 
+            # First try to match by field_type (most reliable)
+            if field_type == 'email' and v:
+                result['email'] = v
+                logger.info(f"📋 Found email by type: {v}")
+                continue
+            elif field_type == 'phone_number' and v:
+                result['telefoon'] = v
+                logger.info(f"📋 Found phone by type: {v}")
+                continue
+
+            # Then try to match by ref keywords
             if any(x in ref for x in ['bedrijf','company']): result['bedrijf'] = v
             elif any(x in ref for x in ['naam','name','contact']): result['contact'] = v; result['voornaam'] = v.split()[0] if v else 'daar'
             elif 'email' in ref: result['email'] = v
