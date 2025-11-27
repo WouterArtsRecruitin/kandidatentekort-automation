@@ -82,14 +82,30 @@ def parse_typeform_data(webhook_data):
     """Parse Typeform webhook data - handles both regular fields and contact_info blocks"""
     result = {'bedrijf':'Onbekend','contact':'Onbekend','voornaam':'daar','email':'','telefoon':'','vacature':'','functie':'vacature'}
     try:
-        for answer in webhook_data.get('form_response',{}).get('answers',[]):
-            field_type = answer.get('field',{}).get('type','')
-            ref = (answer.get('field',{}).get('ref','') or '').lower()
+        answers = webhook_data.get('form_response',{}).get('answers',[])
+        logger.info(f"📋 Processing {len(answers)} answers")
+
+        for i, answer in enumerate(answers):
+            # Skip non-dict answers
+            if not isinstance(answer, dict):
+                logger.warning(f"Skipping non-dict answer {i}: {type(answer)}")
+                continue
+
+            field = answer.get('field', {})
+            if not isinstance(field, dict):
+                logger.warning(f"Skipping answer {i} with non-dict field: {type(field)}")
+                continue
+
+            field_type = field.get('type', '')
+            ref = (field.get('ref', '') or '').lower()
+
+            logger.info(f"📋 Answer {i}: type={field_type}, ref={ref}")
 
             # Handle contact_info block (contains email, first_name, last_name, phone, company)
             if field_type == 'contact_info' or 'contact_info' in answer:
                 contact_info = answer.get('contact_info', {})
-                if contact_info:
+                if isinstance(contact_info, dict) and contact_info:
+                    logger.info(f"📋 Found contact_info: {list(contact_info.keys())}")
                     if contact_info.get('email'):
                         result['email'] = contact_info['email']
                     if contact_info.get('first_name'):
@@ -105,23 +121,32 @@ def parse_typeform_data(webhook_data):
                 continue
 
             # Handle regular fields
-            v = answer.get('text','') or answer.get('email','') or answer.get('phone_number','') or answer.get('choice',{}).get('label','')
-
-            # Handle multiple choice with multiple selections
-            if 'choices' in answer:
-                v = ', '.join([c.get('label','') for c in answer.get('choices',[])])
-
-            # Handle file uploads
-            if field_type == 'file_upload':
-                v = answer.get('file_url','')
+            v = ''
+            if 'text' in answer:
+                v = answer.get('text', '')
+            elif 'email' in answer:
+                v = answer.get('email', '')
+            elif 'phone_number' in answer:
+                v = answer.get('phone_number', '')
+            elif 'choice' in answer:
+                choice = answer.get('choice', {})
+                if isinstance(choice, dict):
+                    v = choice.get('label', '')
+            elif 'choices' in answer:
+                choices = answer.get('choices', [])
+                if isinstance(choices, list):
+                    v = ', '.join([c.get('label', '') for c in choices if isinstance(c, dict)])
+            elif 'file_url' in answer:
+                v = answer.get('file_url', '')
 
             if any(x in ref for x in ['bedrijf','company']): result['bedrijf'] = v
             elif any(x in ref for x in ['naam','name','contact']): result['contact'] = v; result['voornaam'] = v.split()[0] if v else 'daar'
             elif 'email' in ref: result['email'] = v
             elif any(x in ref for x in ['telefoon','phone']): result['telefoon'] = v
             elif any(x in ref for x in ['vacature','vacancy','tekst']): result['vacature'] = v; result['functie'] = v.split('\n')[0][:50] if v else 'vacature'
+
     except Exception as e:
-        logger.error(f"Parse error: {e}")
+        logger.error(f"Parse error: {e}", exc_info=True)
 
     logger.info(f"📋 Parsed data: email={result['email']}, contact={result['contact']}, bedrijf={result['bedrijf']}")
     return result
