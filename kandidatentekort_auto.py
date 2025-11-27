@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V4.0
+KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V4.1
 Deploy: Render.com | Updated: 2025-11-27
 - V2: Pipedrive organization, person, deal creation
 - V3: Claude AI vacancy analysis + report email
@@ -9,6 +9,7 @@ Deploy: Render.com | Updated: 2025-11-27
 - V3.3: Fixed Typeform file download with authentication
 - V4.0: ULTIMATE email template - Score visualization, Category breakdown,
         Before/After comparison, Full improved text, Numbered checklist, Bonus tips
+- V4.1: OUTLOOK COMPATIBLE - Full table-based layout, MSO conditionals, no flex/gradients
 """
 
 import os
@@ -311,7 +312,8 @@ BELANGRIJK: Antwoord ALLEEN met valid JSON, geen tekst ervoor of erna."""
 
 def get_analysis_email_html(voornaam, bedrijf, analysis, original_text=""):
     """
-    Generate the ULTIMATE professional analysis report email HTML V4.0
+    Generate the ULTIMATE professional analysis report email HTML V4.1
+    OUTLOOK COMPATIBLE - No flex, no gradients, all table-based layout
     Features: Score visualization, Before/After, Checklist, Improved text, Tips
     """
     score = analysis.get('overall_score', 'N/A')
@@ -320,67 +322,78 @@ def get_analysis_email_html(voornaam, bedrijf, analysis, original_text=""):
     improved_text = analysis.get('improved_text', '')
     bonus_tips = analysis.get('bonus_tips', [])
 
-    # Generate HTML for improvements (numbered)
+    # Generate HTML for improvements (numbered) - OUTLOOK COMPATIBLE
     improvements_html = ''.join([
-        f'''<tr><td style="padding:12px 0;border-bottom:1px solid rgba(245,158,11,0.2);">
-        <table cellpadding="0" cellspacing="0"><tr>
-        <td style="width:32px;height:32px;background:linear-gradient(135deg,#F59E0B,#FBBF24);border-radius:50%;text-align:center;line-height:32px;font-weight:700;color:white;font-size:14px;">{i+1}</td>
-        <td style="padding-left:15px;color:#78350F;font-size:14px;line-height:1.6;">{imp}</td>
-        </tr></table></td></tr>''' for i, imp in enumerate(improvements)
+        f'''<tr>
+        <td style="padding:12px 0;border-bottom:1px solid #FDE68A;">
+        <table cellpadding="0" cellspacing="0" width="100%"><tr>
+        <td width="40" valign="top"><table cellpadding="0" cellspacing="0"><tr><td style="width:32px;height:32px;background-color:#F59E0B;text-align:center;font-weight:bold;color:white;font-size:14px;font-family:Arial,sans-serif;mso-line-height-rule:exactly;line-height:32px;">{i+1}</td></tr></table></td>
+        <td style="padding-left:12px;color:#78350F;font-size:14px;line-height:22px;font-family:Arial,sans-serif;">{imp}</td>
+        </tr></table>
+        </td></tr>''' for i, imp in enumerate(improvements)
     ])
 
-    # Generate HTML for bonus tips (with icons)
+    # Generate HTML for bonus tips - OUTLOOK COMPATIBLE (table-based)
     tips_html = ''.join([
-        f'''<div style="display:flex;align-items:flex-start;margin-bottom:12px;padding:12px;background:white;border-radius:8px;">
-        <span style="margin-right:12px;font-size:18px;">💡</span>
-        <span style="color:#4C1D95;font-size:14px;line-height:1.6;">{tip}</span>
-        </div>''' for tip in bonus_tips
+        f'''<tr><td style="padding:8px 0;">
+        <table cellpadding="0" cellspacing="0" width="100%" style="background-color:#ffffff;"><tr>
+        <td width="40" valign="top" style="padding:12px;font-size:18px;">💡</td>
+        <td style="padding:12px;color:#5B21B6;font-size:14px;line-height:22px;font-family:Arial,sans-serif;">{tip}</td>
+        </tr></table>
+        </td></tr>''' for tip in bonus_tips
     ])
 
     # Truncate original text for before/after display
-    original_display = original_text[:600] + '...' if len(original_text) > 600 else original_text
-    improved_preview = improved_text[:600] + '...' if len(improved_text) > 600 else improved_text
+    original_display = original_text[:500] + '...' if len(original_text) > 500 else original_text
+    improved_preview = improved_text[:500] + '...' if len(improved_text) > 500 else improved_text
+
+    # Escape newlines for HTML display
+    original_display = original_display.replace('\n', '<br>')
+    improved_preview = improved_preview.replace('\n', '<br>')
+    improved_text_html = improved_text.replace('\n', '<br>')
 
     # Calculate score color and label based on score
     if isinstance(score, (int, float)):
         score_num = float(score)
         if score_num >= 8.0:
-            score_color = "#10B981"  # Green
+            score_color = "#10B981"
             score_bg = "#ECFDF5"
+            score_border = "#10B981"
             score_label = "Uitstekend"
             score_emoji = "🏆"
         elif score_num >= 6.5:
-            score_color = "#3B82F6"  # Blue
+            score_color = "#3B82F6"
             score_bg = "#EFF6FF"
+            score_border = "#3B82F6"
             score_label = "Goed"
             score_emoji = "👍"
         elif score_num >= 5.0:
-            score_color = "#F59E0B"  # Amber
+            score_color = "#F59E0B"
             score_bg = "#FFFBEB"
+            score_border = "#F59E0B"
             score_label = "Kan beter"
             score_emoji = "📈"
         else:
-            score_color = "#EF4444"  # Red
+            score_color = "#EF4444"
             score_bg = "#FEF2F2"
+            score_border = "#EF4444"
             score_label = "Verbetering nodig"
             score_emoji = "⚠️"
-        score_degrees = score_num * 36
     else:
         score_color = "#6B7280"
         score_bg = "#F9FAFB"
+        score_border = "#6B7280"
         score_label = "Beoordeeld"
         score_emoji = "📊"
-        score_degrees = 180
 
-    # Parse score_section into categories if available
+    # Parse score_section into categories - OUTLOOK COMPATIBLE
     categories_html = ""
     if score_section:
-        # Try to extract individual scores from score_section
         import re
         score_parts = re.findall(r'([A-Za-z-]+):\s*(\d+)/10', score_section)
         if score_parts:
             categories_html = '<table width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px;"><tr>'
-            for name, cat_score in score_parts[:4]:  # Max 4 categories
+            for name, cat_score in score_parts[:4]:
                 cat_score_int = int(cat_score)
                 if cat_score_int >= 7:
                     cat_color = "#10B981"
@@ -391,215 +404,294 @@ def get_analysis_email_html(voornaam, bedrijf, analysis, original_text=""):
                 else:
                     cat_color = "#EF4444"
                     cat_icon = "❗"
-                categories_html += f'''<td width="25%" style="text-align:center;padding:10px;">
-                <div style="font-size:24px;margin-bottom:4px;">{cat_icon}</div>
-                <div style="font-size:24px;font-weight:800;color:{cat_color};">{cat_score}</div>
-                <div style="font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:0.5px;">{name}</div>
+                categories_html += f'''<td width="25%" align="center" style="padding:10px;">
+                <table cellpadding="0" cellspacing="0"><tr><td align="center" style="font-size:24px;padding-bottom:4px;">{cat_icon}</td></tr>
+                <tr><td align="center" style="font-size:24px;font-weight:bold;color:{cat_color};font-family:Arial,sans-serif;">{cat_score}</td></tr>
+                <tr><td align="center" style="font-size:11px;color:#6B7280;text-transform:uppercase;font-family:Arial,sans-serif;">{name}</td></tr></table>
                 </td>'''
             categories_html += '</tr></table>'
 
-    return f'''<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f3f4f6;">
+    return f'''<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!--[if mso]>
+<xml>
+<o:OfficeDocumentSettings>
+<o:AllowPNG/>
+<o:PixelsPerInch>96</o:PixelsPerInch>
+</o:OfficeDocumentSettings>
+</xml>
+<![endif]-->
+<style type="text/css">
+body, table, td {{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;}}
+img {{border:0;height:auto;line-height:100%;outline:none;text-decoration:none;}}
+table {{border-collapse:collapse !important;}}
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#f3f4f6;width:100%;">
 
-<!-- EMAIL WRAPPER -->
-<table width="100%" cellpadding="0" cellspacing="0" style="padding:30px 15px;"><tr><td align="center">
-<table width="680" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:24px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.15);overflow:hidden;">
+<!-- OUTLOOK WRAPPER -->
+<!--[if mso]>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f3f4f6;">
+<tr><td align="center" style="padding:30px 0;">
+<![endif]-->
 
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<!-- HEADER SECTION -->
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<tr><td style="background:linear-gradient(135deg,#1E3A8A 0%,#3B82F6 50%,#1E3A8A 100%);padding:45px 40px;position:relative;">
-<table width="100%" cellpadding="0" cellspacing="0">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f3f4f6;">
+<tr><td align="center" style="padding:30px 15px;">
+
+<table role="presentation" width="650" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;max-width:650px;">
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- HEADER -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<tr>
+<td style="background-color:#1E3A8A;padding:40px 35px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td width="60" valign="middle">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="width:56px;height:56px;background-color:#FF6B35;text-align:center;font-size:26px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;line-height:56px;">R</td></tr>
+</table>
+</td>
+<td style="padding-left:16px;" valign="middle">
+<p style="margin:0;color:#ffffff;font-size:20px;font-weight:bold;font-family:Arial,sans-serif;">RECRUITIN</p>
+<p style="margin:4px 0 0 0;color:#E0E7FF;font-size:12px;font-family:Arial,sans-serif;">Vacature Intelligence Platform</p>
+</td>
+</tr>
+</table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:30px;">
 <tr><td>
-<!-- Logo & Brand -->
-<table cellpadding="0" cellspacing="0"><tr>
-<td style="width:56px;height:56px;background:linear-gradient(135deg,#FF6B35 0%,#FF8F65 100%);border-radius:14px;text-align:center;line-height:56px;box-shadow:0 8px 25px rgba(255,107,53,0.4);">
-<span style="font-size:26px;font-weight:800;color:white;">R</span>
-</td>
-<td style="padding-left:16px;vertical-align:middle;">
-<div style="color:white;font-size:20px;font-weight:700;letter-spacing:-0.5px;">RECRUITIN</div>
-<div style="color:rgba(255,255,255,0.85);font-size:12px;font-weight:500;">Vacature Intelligence Platform</div>
-</td>
-</tr></table>
-</td></tr>
-<tr><td style="padding-top:35px;">
-<div style="color:white;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;margin-bottom:8px;">AI-POWERED ANALYSE</div>
-<div style="color:white;font-size:32px;font-weight:800;letter-spacing:-1px;line-height:1.2;">📊 Vacature Analyse Rapport</div>
-<div style="color:rgba(255,255,255,0.9);font-size:15px;margin-top:10px;">Gepersonaliseerd voor <strong>{bedrijf}</strong></div>
+<p style="margin:0 0 8px 0;color:#93C5FD;font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;font-family:Arial,sans-serif;">AI-POWERED ANALYSE</p>
+<p style="margin:0;color:#ffffff;font-size:28px;font-weight:bold;font-family:Arial,sans-serif;">📊 Vacature Analyse Rapport</p>
+<p style="margin:10px 0 0 0;color:#E0E7FF;font-size:15px;font-family:Arial,sans-serif;">Gepersonaliseerd voor <strong style="color:#ffffff;">{bedrijf}</strong></p>
 </td></tr>
 </table>
-</td></tr>
+</td>
+</tr>
 
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<!-- SCORE HERO SECTION -->
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<tr><td style="padding:50px 40px;text-align:center;background:linear-gradient(180deg,#f8fafc 0%,#ffffff 100%);">
-<!-- Score Circle -->
-<div style="display:inline-block;position:relative;margin-bottom:25px;">
-<div style="width:180px;height:180px;border-radius:50%;background:conic-gradient({score_color} 0deg {score_degrees}deg,#E5E7EB {score_degrees}deg 360deg);padding:12px;display:inline-block;">
-<div style="width:100%;height:100%;background:white;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:inset 0 2px 10px rgba(0,0,0,0.05);">
-<div style="font-size:52px;font-weight:800;color:{score_color};line-height:1;">{score}</div>
-<div style="font-size:16px;color:#9CA3AF;font-weight:500;margin-top:2px;">/10</div>
-</div>
-</div>
-</div>
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SCORE SECTION -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<tr>
+<td style="padding:45px 35px;background-color:#f8fafc;" align="center">
+<!-- Score Box -->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
+<tr><td align="center" style="width:140px;height:140px;border:8px solid {score_color};background-color:#ffffff;">
+<p style="margin:0;font-size:52px;font-weight:bold;color:{score_color};font-family:Arial,sans-serif;line-height:1;">{score}</p>
+<p style="margin:5px 0 0 0;font-size:16px;color:#9CA3AF;font-family:Arial,sans-serif;">/10</p>
+</td></tr>
+</table>
 <!-- Score Label -->
-<div style="margin-bottom:8px;">
-<span style="display:inline-block;background:{score_bg};color:{score_color};padding:8px 20px;border-radius:25px;font-size:14px;font-weight:700;border:2px solid {score_color};">
-{score_emoji} {score_label}
-</span>
-</div>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:15px;">
+<tr><td style="background-color:{score_bg};border:2px solid {score_border};padding:10px 24px;">
+<p style="margin:0;font-size:14px;font-weight:bold;color:{score_color};font-family:Arial,sans-serif;">{score_emoji} {score_label}</p>
+</td></tr>
+</table>
 <!-- Score Breakdown -->
-<div style="color:#6B7280;font-size:13px;max-width:450px;margin:15px auto 0;line-height:1.6;">{score_section}</div>
+<p style="margin:0;color:#6B7280;font-size:13px;font-family:Arial,sans-serif;line-height:1.6;max-width:450px;">{score_section}</p>
 {categories_html}
-</td></tr>
-
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<!-- INTRO & GREETING -->
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<tr><td style="padding:0 40px 35px;">
-<div style="border-left:4px solid #FF6B35;padding-left:20px;">
-<p style="font-size:20px;font-weight:700;color:#1F2937;margin:0 0 12px 0;">Hoi {voornaam}! 👋</p>
-<p style="color:#4B5563;line-height:1.7;margin:0;font-size:15px;">Bedankt voor het uploaden van je vacature via <strong style="color:#FF6B35;">kandidatentekort.nl</strong>. Onze AI heeft je tekst grondig geanalyseerd op 6 belangrijke criteria. Hieronder vind je de complete resultaten met concrete verbeteringen.</p>
-</div>
-</td></tr>
-
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<!-- TOP 3 VERBETERPUNTEN (CHECKLIST STYLE) -->
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<tr><td style="padding:0 40px 35px;">
-<div style="background:linear-gradient(135deg,#FFFBEB 0%,#FEF3C7 100%);border-radius:20px;padding:30px;border:2px solid #F59E0B;box-shadow:0 4px 15px rgba(245,158,11,0.15);">
-<!-- Section Header -->
-<table cellpadding="0" cellspacing="0" style="margin-bottom:20px;"><tr>
-<td style="width:48px;height:48px;background:linear-gradient(135deg,#F59E0B 0%,#FBBF24 100%);border-radius:14px;text-align:center;line-height:48px;box-shadow:0 4px 12px rgba(245,158,11,0.3);">
-<span style="font-size:22px;">🎯</span>
 </td>
-<td style="padding-left:16px;">
-<div style="font-size:11px;font-weight:600;color:#B45309;text-transform:uppercase;letter-spacing:1px;">Prioriteit</div>
-<div style="font-size:20px;font-weight:700;color:#92400E;">Top 3 Verbeterpunten</div>
-</td>
-</tr></table>
-<!-- Improvements List -->
-<table width="100%" cellpadding="0" cellspacing="0">{improvements_html}</table>
-</div>
-</td></tr>
+</tr>
 
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<!-- BEFORE / AFTER COMPARISON -->
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<tr><td style="padding:0 40px 35px;">
-<div style="text-align:center;margin-bottom:25px;">
-<div style="font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;">Vergelijking</div>
-<div style="font-size:22px;font-weight:700;color:#1F2937;">📝 Voor & Na Optimalisatie</div>
-</div>
-<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<!-- BEFORE Column -->
-<td width="48%" style="vertical-align:top;">
-<div style="background:#FEF2F2;border-radius:16px;padding:20px;border:2px solid #FECACA;height:100%;">
-<div style="display:flex;align-items:center;margin-bottom:15px;">
-<span style="display:inline-block;background:#EF4444;color:white;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">❌ Origineel</span>
-</div>
-<div style="background:white;padding:16px;border-radius:10px;font-size:13px;color:#6B7280;line-height:1.7;max-height:220px;overflow:hidden;border:1px solid #FECACA;">{original_display}</div>
-</div>
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- INTRO -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<tr>
+<td style="padding:0 35px 30px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td width="4" style="background-color:#FF6B35;"></td>
+<td style="padding-left:20px;">
+<p style="margin:0 0 12px 0;font-size:20px;font-weight:bold;color:#1F2937;font-family:Arial,sans-serif;">Hoi {voornaam}! 👋</p>
+<p style="margin:0;color:#4B5563;font-size:15px;line-height:24px;font-family:Arial,sans-serif;">Bedankt voor het uploaden van je vacature via <strong style="color:#FF6B35;">kandidatentekort.nl</strong>. Onze AI heeft je tekst grondig geanalyseerd. Hieronder vind je de complete resultaten met concrete verbeteringen.</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- TOP 3 VERBETERPUNTEN -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<tr>
+<td style="padding:0 35px 30px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFFBEB;border:2px solid #F59E0B;">
+<tr><td style="padding:25px;">
+<!-- Header -->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
+<tr>
+<td width="48" valign="middle"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="width:44px;height:44px;background-color:#F59E0B;text-align:center;font-size:20px;line-height:44px;">🎯</td></tr></table></td>
+<td style="padding-left:14px;" valign="middle">
+<p style="margin:0 0 2px 0;font-size:11px;font-weight:bold;color:#B45309;text-transform:uppercase;font-family:Arial,sans-serif;">Prioriteit</p>
+<p style="margin:0;font-size:18px;font-weight:bold;color:#92400E;font-family:Arial,sans-serif;">Top 3 Verbeterpunten</p>
+</td>
+</tr>
+</table>
+<!-- List -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">{improvements_html}</table>
+</td></tr>
+</table>
+</td>
+</tr>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- BEFORE / AFTER -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<tr>
+<td style="padding:0 35px 30px;">
+<p style="margin:0 0 20px 0;text-align:center;font-size:20px;font-weight:bold;color:#1F2937;font-family:Arial,sans-serif;">📝 Voor & Na Optimalisatie</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<!-- BEFORE -->
+<td width="48%" valign="top" style="background-color:#FEF2F2;border:2px solid #FECACA;padding:18px;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:12px;">
+<tr><td style="background-color:#EF4444;padding:5px 12px;"><p style="margin:0;font-size:11px;font-weight:bold;color:#ffffff;text-transform:uppercase;font-family:Arial,sans-serif;">❌ Origineel</p></td></tr>
+</table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border:1px solid #FECACA;">
+<tr><td style="padding:14px;font-size:12px;color:#6B7280;line-height:20px;font-family:Arial,sans-serif;">{original_display}</td></tr>
+</table>
 </td>
 <td width="4%"></td>
-<!-- AFTER Column -->
-<td width="48%" style="vertical-align:top;">
-<div style="background:#ECFDF5;border-radius:16px;padding:20px;border:2px solid #A7F3D0;height:100%;">
-<div style="display:flex;align-items:center;margin-bottom:15px;">
-<span style="display:inline-block;background:#10B981;color:white;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">✅ Geoptimaliseerd</span>
-</div>
-<div style="background:white;padding:16px;border-radius:10px;font-size:13px;color:#374151;line-height:1.7;max-height:220px;overflow:hidden;border:1px solid #A7F3D0;">{improved_preview}</div>
-</div>
+<!-- AFTER -->
+<td width="48%" valign="top" style="background-color:#ECFDF5;border:2px solid #A7F3D0;padding:18px;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:12px;">
+<tr><td style="background-color:#10B981;padding:5px 12px;"><p style="margin:0;font-size:11px;font-weight:bold;color:#ffffff;text-transform:uppercase;font-family:Arial,sans-serif;">✅ Geoptimaliseerd</p></td></tr>
+</table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border:1px solid #A7F3D0;">
+<tr><td style="padding:14px;font-size:12px;color:#374151;line-height:20px;font-family:Arial,sans-serif;">{improved_preview}</td></tr>
+</table>
 </td>
-</tr></table>
-</td></tr>
+</tr>
+</table>
+</td>
+</tr>
 
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<!-- FULL IMPROVED VACANCY TEXT -->
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<tr><td style="padding:0 40px 35px;">
-<div style="background:linear-gradient(135deg,#ECFDF5 0%,#D1FAE5 100%);border-radius:20px;padding:30px;border:2px solid #10B981;box-shadow:0 4px 15px rgba(16,185,129,0.15);">
-<!-- Section Header -->
-<table cellpadding="0" cellspacing="0" style="margin-bottom:20px;"><tr>
-<td style="width:48px;height:48px;background:linear-gradient(135deg,#10B981 0%,#34D399 100%);border-radius:14px;text-align:center;line-height:48px;box-shadow:0 4px 12px rgba(16,185,129,0.3);">
-<span style="font-size:22px;">✍️</span>
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- FULL IMPROVED TEXT -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<tr>
+<td style="padding:0 35px 30px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ECFDF5;border:2px solid #10B981;">
+<tr><td style="padding:25px;">
+<!-- Header -->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
+<tr>
+<td width="48" valign="middle"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="width:44px;height:44px;background-color:#10B981;text-align:center;font-size:20px;line-height:44px;">✍️</td></tr></table></td>
+<td style="padding-left:14px;" valign="middle">
+<p style="margin:0 0 2px 0;font-size:11px;font-weight:bold;color:#047857;text-transform:uppercase;font-family:Arial,sans-serif;">Direct te gebruiken</p>
+<p style="margin:0;font-size:18px;font-weight:bold;color:#065F46;font-family:Arial,sans-serif;">Verbeterde Vacaturetekst</p>
 </td>
-<td style="padding-left:16px;">
-<div style="font-size:11px;font-weight:600;color:#047857;text-transform:uppercase;letter-spacing:1px;">Direct te gebruiken</div>
-<div style="font-size:20px;font-weight:700;color:#065F46;">Verbeterde Vacaturetekst</div>
-</td>
-</tr></table>
-<!-- Full Text -->
-<div style="background:white;padding:25px;border-radius:14px;font-size:14px;color:#374151;line-height:1.85;white-space:pre-wrap;border:1px solid #A7F3D0;box-shadow:inset 0 2px 4px rgba(0,0,0,0.02);">{improved_text}</div>
-<div style="text-align:center;margin-top:20px;">
-<span style="display:inline-block;background:white;color:#059669;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid #A7F3D0;">💾 Kopieer deze tekst en plaats direct in je vacature</span>
-</div>
-</div>
+</tr>
+</table>
+<!-- Text -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border:1px solid #A7F3D0;">
+<tr><td style="padding:20px;font-size:14px;color:#374151;line-height:24px;font-family:Arial,sans-serif;">{improved_text_html}</td></tr>
+</table>
+<p style="margin:18px 0 0 0;text-align:center;font-size:13px;color:#059669;font-family:Arial,sans-serif;">💾 Kopieer deze tekst en plaats direct in je vacature</p>
 </td></tr>
+</table>
+</td>
+</tr>
 
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<!-- BONUS TIPS SECTION -->
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<tr><td style="padding:0 40px 35px;">
-<div style="background:linear-gradient(135deg,#F5F3FF 0%,#EDE9FE 100%);border-radius:20px;padding:30px;border:2px solid #8B5CF6;box-shadow:0 4px 15px rgba(139,92,246,0.15);">
-<!-- Section Header -->
-<table cellpadding="0" cellspacing="0" style="margin-bottom:20px;"><tr>
-<td style="width:48px;height:48px;background:linear-gradient(135deg,#8B5CF6 0%,#A78BFA 100%);border-radius:14px;text-align:center;line-height:48px;box-shadow:0 4px 12px rgba(139,92,246,0.3);">
-<span style="font-size:22px;">🚀</span>
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- BONUS TIPS -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<tr>
+<td style="padding:0 35px 30px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F5F3FF;border:2px solid #8B5CF6;">
+<tr><td style="padding:25px;">
+<!-- Header -->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
+<tr>
+<td width="48" valign="middle"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="width:44px;height:44px;background-color:#8B5CF6;text-align:center;font-size:20px;line-height:44px;">🚀</td></tr></table></td>
+<td style="padding-left:14px;" valign="middle">
+<p style="margin:0 0 2px 0;font-size:11px;font-weight:bold;color:#6D28D9;text-transform:uppercase;font-family:Arial,sans-serif;">Extra waarde</p>
+<p style="margin:0;font-size:18px;font-weight:bold;color:#5B21B6;font-family:Arial,sans-serif;">Bonus Tips van de Expert</p>
 </td>
-<td style="padding-left:16px;">
-<div style="font-size:11px;font-weight:600;color:#6D28D9;text-transform:uppercase;letter-spacing:1px;">Extra waarde</div>
-<div style="font-size:20px;font-weight:700;color:#5B21B6;">Bonus Tips van de Expert</div>
-</td>
-</tr></table>
+</tr>
+</table>
 <!-- Tips -->
-{tips_html}
-</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">{tips_html}</table>
 </td></tr>
+</table>
+</td>
+</tr>
 
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
 <!-- CTA SECTION -->
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<tr><td style="padding:0 40px 45px;">
-<div style="background:linear-gradient(135deg,#1E3A8A 0%,#3B82F6 100%);border-radius:20px;padding:40px;text-align:center;box-shadow:0 10px 30px rgba(30,58,138,0.3);">
-<div style="font-size:24px;font-weight:800;color:white;margin-bottom:10px;letter-spacing:-0.5px;">Wil je nog meer resultaat?</div>
-<p style="color:rgba(255,255,255,0.9);margin:0 0 30px 0;font-size:15px;line-height:1.6;">Plan een gratis adviesgesprek van 30 minuten.<br>Bespreek je vacature met een recruitment specialist.</p>
-<table cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr>
-<td style="padding:0 8px;">
-<a href="https://calendly.com/wouter-arts-/vacature-analyse-advies" style="display:inline-block;background:#10B981;color:white;padding:16px 28px;text-decoration:none;border-radius:12px;font-weight:700;font-size:15px;box-shadow:0 4px 15px rgba(16,185,129,0.4);transition:all 0.3s;">📅 Plan Adviesgesprek</a>
-</td>
-<td style="padding:0 8px;">
-<a href="https://wa.me/31614314593?text=Hoi%20Wouter,%20ik%20heb%20mijn%20vacature-analyse%20ontvangen!" style="display:inline-block;background:#25D366;color:white;padding:16px 28px;text-decoration:none;border-radius:12px;font-weight:700;font-size:15px;box-shadow:0 4px 15px rgba(37,211,102,0.4);">💬 WhatsApp</a>
-</td>
-</tr></table>
-</div>
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<tr>
+<td style="padding:0 35px 35px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#1E3A8A;">
+<tr><td style="padding:35px;text-align:center;">
+<p style="margin:0 0 10px 0;font-size:22px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">Wil je nog meer resultaat?</p>
+<p style="margin:0 0 25px 0;font-size:15px;color:#E0E7FF;line-height:22px;font-family:Arial,sans-serif;">Plan een gratis adviesgesprek van 30 minuten.<br>Bespreek je vacature met een recruitment specialist.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+<tr>
+<td style="padding:0 6px;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="background-color:#10B981;padding:14px 24px;">
+<a href="https://calendly.com/wouter-arts-/vacature-analyse-advies" style="color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;font-family:Arial,sans-serif;">📅 Plan Adviesgesprek</a>
 </td></tr>
-
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<!-- FOOTER -->
-<!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<tr><td style="background:#111827;padding:35px 40px;">
-<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="vertical-align:top;">
-<div style="font-size:18px;font-weight:700;color:white;margin-bottom:4px;">Wouter Arts</div>
-<div style="color:rgba(255,255,255,0.7);font-size:13px;margin-bottom:2px;">Founder & Recruitment Specialist</div>
-<div style="color:#FF6B35;font-size:14px;font-weight:600;">Kandidatentekort.nl</div>
+</table>
 </td>
-<td style="text-align:right;vertical-align:top;">
-<div style="color:rgba(255,255,255,0.6);font-size:12px;line-height:1.8;">
+<td style="padding:0 6px;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="background-color:#25D366;padding:14px 24px;">
+<a href="https://wa.me/31614314593?text=Hoi%20Wouter,%20ik%20heb%20mijn%20vacature-analyse%20ontvangen!" style="color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;font-family:Arial,sans-serif;">💬 WhatsApp</a>
+</td></tr>
+</table>
+</td>
+</tr>
+</table>
+</td></tr>
+</table>
+</td>
+</tr>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- FOOTER -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<tr>
+<td style="background-color:#111827;padding:30px 35px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td valign="top">
+<p style="margin:0 0 4px 0;font-size:17px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">Wouter Arts</p>
+<p style="margin:0 0 2px 0;font-size:13px;color:#9CA3AF;font-family:Arial,sans-serif;">Founder & Recruitment Specialist</p>
+<p style="margin:0;font-size:14px;font-weight:bold;color:#FF6B35;font-family:Arial,sans-serif;">Kandidatentekort.nl</p>
+</td>
+<td valign="top" align="right">
+<p style="margin:0;font-size:12px;color:#9CA3AF;line-height:22px;font-family:Arial,sans-serif;">
 📞 06-14314593<br>
 📧 wouter@recruitin.nl<br>
 🌐 kandidatentekort.nl
-</div>
+</p>
 </td>
-</tr></table>
-<div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:25px;padding-top:20px;text-align:center;">
-<p style="margin:0;color:rgba(255,255,255,0.4);font-size:11px;">© 2025 Kandidatentekort.nl | Recruitin B.V. | Made with ❤️ in Nederland</p>
-</div>
+</tr>
+</table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;border-top:1px solid #374151;">
+<tr><td style="padding-top:20px;text-align:center;">
+<p style="margin:0;color:#6B7280;font-size:11px;font-family:Arial,sans-serif;">© 2025 Kandidatentekort.nl | Recruitin B.V. | Made with ❤️ in Nederland</p>
 </td></tr>
+</table>
+</td>
+</tr>
 
-</table></td></tr></table></body></html>'''
+</table>
+</td></tr>
+</table>
+
+<!--[if mso]>
+</td></tr>
+</table>
+<![endif]-->
+
+</body>
+</html>'''
 
 
 def send_analysis_email(to_email, voornaam, bedrijf, analysis, original_text=""):
@@ -818,7 +910,7 @@ def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="
 def health():
     return jsonify({
         "status": "healthy",
-        "version": "4.0",
+        "version": "4.1",
         "email": bool(GMAIL_APP_PASSWORD),
         "pipedrive": bool(PIPEDRIVE_API_TOKEN),
         "claude": bool(ANTHROPIC_API_KEY),
