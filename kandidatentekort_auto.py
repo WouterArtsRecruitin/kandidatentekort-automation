@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V2.2
+KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V3.0
 Deploy: Render.com | Updated: 2025-11-27
 - Added Pipedrive organization creation
 - Added file_url to deal notes
 - Fixed org_id linking for person and deal
 - Fixed bedrijf parsing (3rd text field, not 5th)
+- V3: Added Claude AI vacancy analysis
+- V3: Added analysis report email with improved vacancy text
 """
 
 import os
@@ -90,6 +92,161 @@ def send_email(to_email, subject, html_body):
 def send_confirmation_email(to_email, voornaam, bedrijf, functie):
     return send_email(to_email, f"✅ Ontvangen: Vacature-analyse voor {functie}",
                       get_confirmation_email_html(voornaam, bedrijf, functie))
+
+
+def analyze_vacancy_with_claude(vacature_text, bedrijf, sector=""):
+    """Analyze vacancy text with Claude AI and return structured analysis"""
+    if not ANTHROPIC_API_KEY:
+        logger.error("❌ ANTHROPIC_API_KEY not set!")
+        return None
+
+    prompt = f"""Je bent een expert recruitment copywriter gespecialiseerd in de Nederlandse technische arbeidsmarkt. Analyseer deze vacaturetekst en verbeter ze voor maximale kandidaat-conversie.
+
+## VACATURETEKST OM TE ANALYSEREN:
+
+{vacature_text}
+
+## CONTEXT:
+- Bedrijf: {bedrijf}
+- Sector: {sector if sector else 'Niet opgegeven'}
+
+## JOUW OPDRACHT:
+
+Analyseer deze vacaturetekst en lever het volgende in EXACT dit JSON format:
+
+{{
+    "overall_score": 7.2,
+    "score_section": "Aantrekkelijkheid: 7/10 - Duidelijkheid: 6/10 - USP's: 5/10 - Call-to-action: 8/10",
+    "top_3_improvements": [
+        "Eerste concrete verbetering",
+        "Tweede concrete verbetering",
+        "Derde concrete verbetering"
+    ],
+    "improved_text": "De volledige verbeterde vacaturetekst hier (400-600 woorden, pakkende opening, duidelijke functie-inhoud, concrete arbeidsvoorwaarden, sterke employer branding, overtuigende call-to-action)",
+    "bonus_tips": [
+        "Eerste bonus tip voor de recruiter",
+        "Tweede bonus tip"
+    ]
+}}
+
+BELANGRIJK: Antwoord ALLEEN met valid JSON, geen tekst ervoor of erna."""
+
+    try:
+        logger.info("🤖 Starting Claude analysis...")
+        r = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            },
+            json={
+                "model": "claude-sonnet-4-20250514",
+                "max_tokens": 4000,
+                "messages": [{"role": "user", "content": prompt}]
+            },
+            timeout=60
+        )
+
+        if r.status_code == 200:
+            response_text = r.json()['content'][0]['text']
+            # Extract JSON from response
+            json_start = response_text.find('{')
+            json_end = response_text.rfind('}') + 1
+            if json_start >= 0 and json_end > json_start:
+                analysis = json.loads(response_text[json_start:json_end])
+                logger.info(f"✅ Claude analysis complete: score={analysis.get('overall_score')}")
+                return analysis
+            else:
+                logger.error(f"❌ No JSON found in Claude response")
+                return None
+        else:
+            logger.error(f"❌ Claude API error: {r.status_code} - {r.text[:200]}")
+            return None
+
+    except Exception as e:
+        logger.error(f"❌ Claude analysis failed: {e}")
+        return None
+
+
+def get_analysis_email_html(voornaam, bedrijf, analysis):
+    """Generate the analysis report email HTML"""
+    score = analysis.get('overall_score', 'N/A')
+    score_section = analysis.get('score_section', '')
+    improvements = analysis.get('top_3_improvements', [])
+    improved_text = analysis.get('improved_text', '')
+    bonus_tips = analysis.get('bonus_tips', [])
+
+    improvements_html = ''.join([f'<li style="margin-bottom:10px;">{imp}</li>' for imp in improvements])
+    tips_html = ''.join([f'<li style="margin-bottom:10px;">{tip}</li>' for tip in bonus_tips])
+
+    return f'''<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;font-family:Inter,-apple-system,sans-serif;background:#f9fafb;">
+<table width="100%" style="padding:40px 20px;"><tr><td align="center">
+<table width="600" style="background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(44,62,80,0.12);">
+
+<tr><td style="background:linear-gradient(135deg,#1e3a5f,#2d5a87);color:#fff;padding:40px 30px;text-align:center;">
+<div style="font-size:28px;font-weight:800;">🎯 Jouw Vacature-Analyse is Klaar!</div>
+<div style="font-size:16px;opacity:0.95;margin-top:10px;">AI-powered analyse voor {bedrijf}</div></td></tr>
+
+<tr><td style="padding:35px 30px;">
+<p style="font-size:19px;font-weight:700;margin-top:0;">Hoi {voornaam},</p>
+<p style="color:#374151;">Bedankt voor het uploaden van je vacature via <strong>kandidatentekort.nl</strong>! Hieronder vind je mijn complete analyse:</p>
+
+<!-- Score Box -->
+<div style="background:#f0f4f8;border-left:5px solid #2d5a87;border-radius:0 12px 12px 0;padding:20px;margin:25px 0;">
+<div style="font-size:18px;font-weight:700;color:#1e3a5f;">📊 SCORE: {score}/10</div>
+<p style="color:#374151;margin:10px 0 0 0;">{score_section}</p>
+</div>
+
+<!-- Top 3 Verbeterpunten -->
+<div style="background:#fff3e0;border-left:5px solid #e67e22;border-radius:0 12px 12px 0;padding:20px;margin:25px 0;">
+<div style="font-size:18px;font-weight:700;color:#e67e22;">🎯 TOP 3 VERBETERPUNTEN</div>
+<ol style="color:#374151;padding-left:20px;margin:15px 0 0 0;">{improvements_html}</ol>
+</div>
+
+<!-- Verbeterde Tekst -->
+<div style="background:#e8f5e9;border-left:5px solid #27ae60;border-radius:0 12px 12px 0;padding:20px;margin:25px 0;">
+<div style="font-size:18px;font-weight:700;color:#27ae60;">✍️ VERBETERDE VACATURETEKST</div>
+<div style="background:#f5f5f5;padding:15px;border-radius:8px;margin-top:15px;white-space:pre-wrap;font-size:14px;color:#374151;line-height:1.6;">{improved_text}</div>
+</div>
+
+<!-- Bonus Tips -->
+<div style="background:#f3e5f5;border-left:5px solid #9b59b6;border-radius:0 12px 12px 0;padding:20px;margin:25px 0;">
+<div style="font-size:18px;font-weight:700;color:#9b59b6;">💡 BONUS TIPS</div>
+<ul style="color:#374151;padding-left:20px;margin:15px 0 0 0;">{tips_html}</ul>
+</div>
+
+<!-- CTA Section -->
+<div style="background:#1e3a5f;color:#fff;padding:25px;border-radius:12px;margin:30px 0;text-align:center;">
+<div style="font-size:18px;font-weight:700;margin-bottom:10px;">Wil je meer halen uit je recruitment?</div>
+<p style="margin:0 0 20px 0;opacity:0.9;">Plan een gratis adviesgesprek van 30 minuten.</p>
+<a href="https://calendly.com/wouter-arts-/vacature-analyse-advies" style="display:inline-block;background:#27ae60;color:#fff;padding:15px 30px;text-decoration:none;border-radius:8px;font-weight:700;margin:5px;">📅 Plan Adviesgesprek</a>
+<a href="https://wa.me/31614314593?text=Hoi%20Wouter,%20ik%20heb%20mijn%20vacature-analyse%20ontvangen!" style="display:inline-block;background:#25D366;color:#fff;padding:15px 30px;text-decoration:none;border-radius:8px;font-weight:700;margin:5px;">💬 WhatsApp</a>
+</div>
+
+</td></tr>
+
+<tr><td style="padding:0 30px 35px;border-top:1px solid #f1f3f4;">
+<table style="padding-top:25px;"><tr><td>
+<p style="margin:0 0 5px;font-weight:700;color:#2c3e50;">Wouter Arts</p>
+<p style="margin:0;color:#6b7280;font-size:14px;">Founder & Recruitment Specialist</p>
+<p style="margin:0;color:#ff6b35;font-size:14px;font-weight:600;">Kandidatentekort.nl</p>
+</td></tr></table></td></tr>
+
+<tr><td style="background:#2c3e50;color:#fff;padding:20px 30px;text-align:center;font-size:12px;">
+© 2025 Kandidatentekort.nl | Recruitin B.V.</td></tr>
+
+</table></td></tr></table></body></html>'''
+
+
+def send_analysis_email(to_email, voornaam, bedrijf, analysis):
+    """Send the vacancy analysis report email"""
+    return send_email(
+        to_email,
+        f"🎯 Jouw Vacature-Analyse voor {bedrijf} is Klaar!",
+        get_analysis_email_html(voornaam, bedrijf, analysis)
+    )
 
 
 def parse_typeform_data(webhook_data):
@@ -299,7 +456,7 @@ def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="
 def health():
     return jsonify({
         "status": "healthy",
-        "version": "2.2",
+        "version": "3.0",
         "email": bool(GMAIL_APP_PASSWORD),
         "pipedrive": bool(PIPEDRIVE_API_TOKEN),
         "claude": bool(ANTHROPIC_API_KEY)
@@ -322,13 +479,33 @@ def typeform_webhook():
             logger.error(f"❌ No email found in: {p}")
             return jsonify({"error": "No email", "parsed": p}), 400
 
-        # Send confirmation email
-        email_sent = send_confirmation_email(
+        # Send confirmation email immediately
+        confirmation_sent = send_confirmation_email(
             p['email'],
             p['voornaam'],
             p['bedrijf'],
             p['functie']
         )
+
+        # Run Claude analysis if we have vacancy text
+        analysis = None
+        analysis_sent = False
+        if p['vacature'] and len(p['vacature']) > 50:
+            analysis = analyze_vacancy_with_claude(p['vacature'], p['bedrijf'], p['sector'])
+            if analysis:
+                analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], analysis)
+
+        # Build analysis summary for Pipedrive notes
+        analysis_summary = ""
+        if analysis:
+            analysis_summary = f"""SCORE: {analysis.get('overall_score', 'N/A')}/10
+{analysis.get('score_section', '')}
+
+TOP 3 VERBETERPUNTEN:
+{chr(10).join(['- ' + imp for imp in analysis.get('top_3_improvements', [])])}
+
+VERBETERDE TEKST:
+{analysis.get('improved_text', '')[:1500]}"""
 
         # Create Pipedrive records (organization first, then person, then deal)
         org_id = create_pipedrive_organization(p['bedrijf'])
@@ -338,14 +515,16 @@ def typeform_webhook():
             person_id,
             org_id,
             p['vacature'],
-            p['file_url']
+            p['file_url'],
+            analysis_summary
         )
 
-        logger.info(f"✅ Done: email={email_sent}, org={org_id}, person={person_id}, deal={deal_id}")
+        logger.info(f"✅ Done: confirmation={confirmation_sent}, analysis={analysis_sent}, org={org_id}, person={person_id}, deal={deal_id}")
 
         return jsonify({
             "success": True,
-            "email_sent": email_sent,
+            "confirmation_sent": confirmation_sent,
+            "analysis_sent": analysis_sent,
             "org_id": org_id,
             "person_id": person_id,
             "deal_id": deal_id
