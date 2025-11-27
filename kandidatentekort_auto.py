@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V3.2
+KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V3.3
 Deploy: Render.com | Updated: 2025-11-27
 - V2: Pipedrive organization, person, deal creation
 - V3: Claude AI vacancy analysis + report email
 - V3.1: Professional report template with Before/After comparison
 - V3.2: PDF, DOCX and Word file extraction for vacancy analysis
+- V3.3: Fixed Typeform file download with authentication
 """
 
 import os
@@ -40,6 +41,7 @@ app = Flask(__name__)
 # Config
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 PIPEDRIVE_API_TOKEN = os.getenv('PIPEDRIVE_API_TOKEN')
+TYPEFORM_API_TOKEN = os.getenv('TYPEFORM_API_TOKEN')  # For file downloads
 GMAIL_USER = os.getenv('GMAIL_USER', 'artsrecruitin@gmail.com')
 GMAIL_APP_PASSWORD = os.getenv('GMAIL_APP_PASSWORD') or os.getenv('GMAIL_PASS')
 PIPEDRIVE_BASE = "https://api.pipedrive.com/v1"
@@ -51,6 +53,7 @@ def extract_text_from_file(file_url):
     """
     Download and extract text from PDF, DOCX, or DOC files.
     Returns extracted text or empty string on failure.
+    Typeform file URLs require Bearer token authentication.
     """
     if not file_url:
         return ""
@@ -58,31 +61,56 @@ def extract_text_from_file(file_url):
     try:
         logger.info(f"📄 Downloading file: {file_url[:80]}...")
 
+        # Prepare headers - Typeform API requires authentication
+        headers = {}
+        if TYPEFORM_API_TOKEN and 'typeform.com' in file_url:
+            headers['Authorization'] = f'Bearer {TYPEFORM_API_TOKEN}'
+            logger.info("🔑 Using Typeform API authentication")
+
         # Download the file
-        response = requests.get(file_url, timeout=30)
+        response = requests.get(file_url, headers=headers, timeout=30)
+
+        # Log response details for debugging
+        content_type = response.headers.get('content-type', 'unknown')
+        logger.info(f"📦 Response: status={response.status_code}, content-type={content_type}, size={len(response.content)} bytes")
+
         if response.status_code != 200:
             logger.error(f"❌ Failed to download file: {response.status_code}")
             return ""
 
         content = response.content
-        file_url_lower = file_url.lower()
 
-        # Determine file type and extract text
-        if '.pdf' in file_url_lower or response.headers.get('content-type', '').startswith('application/pdf'):
-            return extract_pdf_text(content)
-        elif '.docx' in file_url_lower or 'officedocument.wordprocessingml' in response.headers.get('content-type', ''):
-            return extract_docx_text(content)
-        elif '.doc' in file_url_lower:
-            logger.warning("⚠️ Old .doc format detected - limited support")
-            return extract_docx_text(content)  # Try anyway
-        else:
-            logger.warning(f"⚠️ Unknown file type: {file_url}")
-            # Try to detect by content
-            if content[:4] == b'%PDF':
-                return extract_pdf_text(content)
-            elif content[:2] == b'PK':  # DOCX is a ZIP file
-                return extract_docx_text(content)
+        # Check if we got an error page instead of the file
+        if len(content) < 100 and b'error' in content.lower():
+            logger.error(f"❌ Got error response: {content[:200]}")
             return ""
+
+        # Detect file type by content (magic bytes) - most reliable
+        if content[:4] == b'%PDF':
+            logger.info("📄 Detected PDF by magic bytes")
+            return extract_pdf_text(content)
+        elif content[:2] == b'PK':  # DOCX/XLSX/ZIP files start with PK
+            logger.info("📄 Detected DOCX/ZIP by magic bytes")
+            return extract_docx_text(content)
+        elif content[:8] == b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1':  # Old .doc format (OLE)
+            logger.warning("⚠️ Old .doc (OLE) format - not supported, try converting to DOCX")
+            return ""
+
+        # Fallback: try by content-type header
+        if 'pdf' in content_type:
+            return extract_pdf_text(content)
+        elif 'wordprocessingml' in content_type or 'msword' in content_type:
+            return extract_docx_text(content)
+
+        # Last resort: try by URL extension
+        file_url_lower = file_url.lower()
+        if '.pdf' in file_url_lower:
+            return extract_pdf_text(content)
+        elif '.docx' in file_url_lower:
+            return extract_docx_text(content)
+
+        logger.warning(f"⚠️ Could not determine file type. Content starts with: {content[:20]}")
+        return ""
 
     except Exception as e:
         logger.error(f"❌ File extraction error: {e}")
@@ -642,10 +670,11 @@ def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="
 def health():
     return jsonify({
         "status": "healthy",
-        "version": "3.2",
+        "version": "3.3",
         "email": bool(GMAIL_APP_PASSWORD),
         "pipedrive": bool(PIPEDRIVE_API_TOKEN),
-        "claude": bool(ANTHROPIC_API_KEY)
+        "claude": bool(ANTHROPIC_API_KEY),
+        "typeform": bool(TYPEFORM_API_TOKEN)
     }), 200
 
 
