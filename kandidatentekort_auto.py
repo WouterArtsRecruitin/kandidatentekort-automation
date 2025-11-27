@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V3.1
+KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V3.2
 Deploy: Render.com | Updated: 2025-11-27
 - V2: Pipedrive organization, person, deal creation
 - V3: Claude AI vacancy analysis + report email
 - V3.1: Professional report template with Before/After comparison
-- V3.1: Score visualization with color coding
-- V3.1: Improved design matching Recruitin brand guidelines
+- V3.2: PDF, DOCX and Word file extraction for vacancy analysis
 """
 
 import os
+import io
 import json
 import logging
 import smtplib
@@ -18,6 +18,19 @@ from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, jsonify
+
+# PDF and DOCX extraction
+try:
+    from PyPDF2 import PdfReader
+    PDF_AVAILABLE = True
+except ImportError:
+    PDF_AVAILABLE = False
+
+try:
+    from docx import Document
+    DOCX_AVAILABLE = True
+except ImportError:
+    DOCX_AVAILABLE = False
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -32,6 +45,104 @@ GMAIL_APP_PASSWORD = os.getenv('GMAIL_APP_PASSWORD') or os.getenv('GMAIL_PASS')
 PIPEDRIVE_BASE = "https://api.pipedrive.com/v1"
 PIPELINE_ID = 4
 STAGE_ID = 21
+
+
+def extract_text_from_file(file_url):
+    """
+    Download and extract text from PDF, DOCX, or DOC files.
+    Returns extracted text or empty string on failure.
+    """
+    if not file_url:
+        return ""
+
+    try:
+        logger.info(f"📄 Downloading file: {file_url[:80]}...")
+
+        # Download the file
+        response = requests.get(file_url, timeout=30)
+        if response.status_code != 200:
+            logger.error(f"❌ Failed to download file: {response.status_code}")
+            return ""
+
+        content = response.content
+        file_url_lower = file_url.lower()
+
+        # Determine file type and extract text
+        if '.pdf' in file_url_lower or response.headers.get('content-type', '').startswith('application/pdf'):
+            return extract_pdf_text(content)
+        elif '.docx' in file_url_lower or 'officedocument.wordprocessingml' in response.headers.get('content-type', ''):
+            return extract_docx_text(content)
+        elif '.doc' in file_url_lower:
+            logger.warning("⚠️ Old .doc format detected - limited support")
+            return extract_docx_text(content)  # Try anyway
+        else:
+            logger.warning(f"⚠️ Unknown file type: {file_url}")
+            # Try to detect by content
+            if content[:4] == b'%PDF':
+                return extract_pdf_text(content)
+            elif content[:2] == b'PK':  # DOCX is a ZIP file
+                return extract_docx_text(content)
+            return ""
+
+    except Exception as e:
+        logger.error(f"❌ File extraction error: {e}")
+        return ""
+
+
+def extract_pdf_text(content):
+    """Extract text from PDF content"""
+    if not PDF_AVAILABLE:
+        logger.error("❌ PyPDF2 not available")
+        return ""
+
+    try:
+        pdf_file = io.BytesIO(content)
+        reader = PdfReader(pdf_file)
+
+        text_parts = []
+        for page in reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text_parts.append(page_text)
+
+        full_text = "\n".join(text_parts)
+        logger.info(f"✅ PDF extracted: {len(full_text)} characters from {len(reader.pages)} pages")
+        return full_text.strip()
+
+    except Exception as e:
+        logger.error(f"❌ PDF extraction failed: {e}")
+        return ""
+
+
+def extract_docx_text(content):
+    """Extract text from DOCX content"""
+    if not DOCX_AVAILABLE:
+        logger.error("❌ python-docx not available")
+        return ""
+
+    try:
+        docx_file = io.BytesIO(content)
+        doc = Document(docx_file)
+
+        text_parts = []
+        for paragraph in doc.paragraphs:
+            if paragraph.text.strip():
+                text_parts.append(paragraph.text)
+
+        # Also extract text from tables
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    if cell.text.strip():
+                        text_parts.append(cell.text)
+
+        full_text = "\n".join(text_parts)
+        logger.info(f"✅ DOCX extracted: {len(full_text)} characters")
+        return full_text.strip()
+
+    except Exception as e:
+        logger.error(f"❌ DOCX extraction failed: {e}")
+        return ""
 
 
 def get_confirmation_email_html(voornaam, bedrijf, functie):
@@ -531,7 +642,7 @@ def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="
 def health():
     return jsonify({
         "status": "healthy",
-        "version": "3.1",
+        "version": "3.2",
         "email": bool(GMAIL_APP_PASSWORD),
         "pipedrive": bool(PIPEDRIVE_API_TOKEN),
         "claude": bool(ANTHROPIC_API_KEY)
@@ -562,13 +673,26 @@ def typeform_webhook():
             p['functie']
         )
 
+        # Get vacancy text - prefer file upload over text field
+        vacancy_text = p['vacature']
+
+        # Try to extract text from uploaded file (PDF, DOCX, DOC)
+        if p['file_url']:
+            logger.info(f"📎 File uploaded, attempting extraction...")
+            extracted_text = extract_text_from_file(p['file_url'])
+            if extracted_text and len(extracted_text) > 50:
+                logger.info(f"✅ Using extracted file text ({len(extracted_text)} chars)")
+                vacancy_text = extracted_text
+            else:
+                logger.info(f"⚠️ File extraction failed or empty, using text field")
+
         # Run Claude analysis if we have vacancy text
         analysis = None
         analysis_sent = False
-        if p['vacature'] and len(p['vacature']) > 50:
-            analysis = analyze_vacancy_with_claude(p['vacature'], p['bedrijf'], p['sector'])
+        if vacancy_text and len(vacancy_text) > 50:
+            analysis = analyze_vacancy_with_claude(vacancy_text, p['bedrijf'], p['sector'])
             if analysis:
-                analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], analysis, p['vacature'])
+                analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], analysis, vacancy_text)
 
         # Build analysis summary for Pipedrive notes
         analysis_summary = ""
@@ -589,7 +713,7 @@ VERBETERDE TEKST:
             f"Vacature Analyse - {p['functie']} - {p['bedrijf']}",
             person_id,
             org_id,
-            p['vacature'],
+            vacancy_text,  # Use extracted text if available
             p['file_url'],
             analysis_summary
         )
