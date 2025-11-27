@@ -667,7 +667,7 @@ table {{border-collapse:collapse !important;}}
 <td valign="top" align="right">
 <p style="margin:0;font-size:12px;color:#9CA3AF;line-height:22px;font-family:Arial,sans-serif;">
 📞 06-14314593<br>
-📧 wouter@recruitin.nl<br>
+📧 warts@recruitin.nl<br>
 🌐 kandidatentekort.nl
 </p>
 </td>
