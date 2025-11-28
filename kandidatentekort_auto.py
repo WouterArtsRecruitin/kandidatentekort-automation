@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V4.1
-Deploy: Render.com | Updated: 2025-11-27
+KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V5.0
+Deploy: Render.com | Updated: 2025-11-28
 - V2: Pipedrive organization, person, deal creation
 - V3: Claude AI vacancy analysis + report email
 - V3.1: Professional report template with Before/After comparison
@@ -10,6 +10,7 @@ Deploy: Render.com | Updated: 2025-11-27
 - V4.0: ULTIMATE email template - Score visualization, Category breakdown,
         Before/After comparison, Full improved text, Numbered checklist, Bonus tips
 - V4.1: OUTLOOK COMPATIBLE - Full table-based layout, MSO conditionals, no flex/gradients
+- V5.0: TRUST-FIRST EMAIL NURTURE - 8 automated follow-up emails over 30 days
 """
 
 import os
@@ -18,7 +19,9 @@ import json
 import logging
 import smtplib
 import requests
-from datetime import datetime
+import threading
+import time
+from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, jsonify
@@ -50,6 +53,23 @@ GMAIL_APP_PASSWORD = os.getenv('GMAIL_APP_PASSWORD') or os.getenv('GMAIL_PASS')
 PIPEDRIVE_BASE = "https://api.pipedrive.com/v1"
 PIPELINE_ID = 4
 STAGE_ID = 21
+
+# Email Nurture Custom Field Keys (from Pipedrive)
+FIELD_RAPPORT_VERZONDEN = "337f9ccca15334e6e4f937ca5ef0055f13ed0c63"
+FIELD_EMAIL_SEQUENCE_STATUS = "22d33c7f119119e178f391a272739c571cf2e29b"
+FIELD_LAATSTE_EMAIL = "753f37a1abc8e161c7982c1379a306b21fae1bab"
+
+# Email sequence timing (days after rapport verzonden)
+EMAIL_SCHEDULE = {
+    1: {"day": 1, "template_id": 55, "name": "Check-in"},
+    2: {"day": 3, "template_id": 56, "name": "Is het gelukt"},
+    3: {"day": 5, "template_id": 57, "name": "Resultaten"},
+    4: {"day": 8, "template_id": 58, "name": "Tip Functietitel"},
+    5: {"day": 11, "template_id": 59, "name": "Tip Salaris"},
+    6: {"day": 14, "template_id": 60, "name": "Tip Opening"},
+    7: {"day": 21, "template_id": 61, "name": "Gesprek Aanbod"},
+    8: {"day": 30, "template_id": 62, "name": "Final Check-in"},
+}
 
 
 def extract_text_from_file(file_url):
@@ -907,10 +927,11 @@ def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="
 
 
 @app.route("/", methods=["GET"])
-def health():
+def home():
     return jsonify({
         "status": "healthy",
-        "version": "4.1",
+        "version": "5.0",
+        "features": ["typeform", "analysis", "nurture"],
         "email": bool(GMAIL_APP_PASSWORD),
         "pipedrive": bool(PIPEDRIVE_API_TOKEN),
         "claude": bool(ANTHROPIC_API_KEY),
@@ -1022,5 +1043,508 @@ def debug_webhook():
     }), 200
 
 
+# =============================================================================
+# TRUST-FIRST EMAIL NURTURE SYSTEM V5.0
+# =============================================================================
+
+def get_nurture_email_html(email_num, voornaam, functie_titel):
+    """Generate HTML content for nurture emails"""
+
+    templates = {
+        1: f"""<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333333;">
+<p>Hoi {voornaam},</p>
+<p>Gisteren stuurde ik je de geoptimaliseerde versie van je vacature voor <strong>{functie_titel}</strong>.</p>
+<p>Even een snelle check: is alles goed aangekomen?</p>
+<p>Als je vragen hebt over de analyse of tips - reply gerust op deze mail. Ik help je graag verder.</p>
+<p>Groeten,<br><strong>Wouter</strong><br><span style="color: #666666;">kandidatentekort.nl</span></p>
+<p style="color: #999999; font-size: 12px; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eeeeee;">
+PS: Geen verkooppraatje vandaag - gewoon even checken of alles werkt.</p>
+</div>""",
+
+        2: f"""<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333333;">
+<p>Hoi {voornaam},</p>
+<p>Even nieuwsgierig: is het gelukt om de verbeterde vacaturetekst te plaatsen?</p>
+<p>Ik hoor het graag als je ergens tegenaan loopt, bijvoorbeeld:</p>
+<ul style="margin: 15px 0; padding-left: 20px;">
+<li>Intern akkoord nodig voor de nieuwe tekst?</li>
+<li>Technische problemen met het platform?</li>
+<li>Twijfels over bepaalde aanpassingen?</li>
+</ul>
+<p>Geen probleem - reply gewoon en ik denk met je mee.</p>
+<p>Groeten,<br><strong>Wouter</strong></p>
+<p style="color: #999999; font-size: 12px; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eeeeee;">
+Tip: De meeste recruiters zien binnen 48 uur na plaatsing al verschil in response.</p>
+</div>""",
+
+        3: f"""<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333333;">
+<p>Hoi {voornaam},</p>
+<p>Het is nu een paar dagen geleden sinds je de verbeterde vacature voor <strong>{functie_titel}</strong> hebt ontvangen.</p>
+<p>Ik ben oprecht benieuwd: merk je al verschil in de reacties?</p>
+<div style="background-color: #f8f9fa; border-left: 4px solid #EF7D00; padding: 15px 20px; margin: 20px 0;">
+<p style="margin: 0 0 10px 0;"><strong>Mag ik je iets vragen?</strong></p>
+<p style="margin: 0;">Als je 2 minuten hebt, zou je me kunnen vertellen:</p>
+<ol style="margin: 10px 0; padding-left: 20px;">
+<li>Heb je de nieuwe tekst al live gezet?</li>
+<li>Zo ja, zie je verschil in aantal/kwaliteit reacties?</li>
+<li>Wat vond je het meest nuttig aan de analyse?</li>
+</ol>
+<p style="margin: 0; font-size: 13px; color: #666;">Jouw feedback helpt me om de service te verbeteren.</p>
+</div>
+<p>Reply gewoon op deze mail - ik lees alles persoonlijk.</p>
+<p>Alvast bedankt,<br><strong>Wouter</strong></p>
+</div>""",
+
+        4: f"""<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333333;">
+<p>Hoi {voornaam},</p>
+<p>Deze week deel ik een tip die veel recruiters over het hoofd zien:</p>
+<div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px 20px; margin: 20px 0;">
+<p style="margin: 0 0 10px 0; font-size: 16px;"><strong>De functietitel bepaalt 70% van je zichtbaarheid</strong></p>
+<p style="margin: 0 0 15px 0;">Kandidaten zoeken op specifieke termen. Een creatieve titel als "Teamspeler Extraordinaire" klinkt leuk, maar niemand zoekt daarop.</p>
+<p style="margin: 0 0 10px 0;"><strong>Wat werkt:</strong></p>
+<ul style="margin: 0 0 15px 0; padding-left: 20px;">
+<li>Gebruik de exacte term die kandidaten googlen</li>
+<li>Voeg niveau toe (Junior/Medior/Senior)</li>
+<li>Houd het onder 60 karakters</li>
+</ul>
+<p style="margin: 0;"><strong>Voorbeeld:</strong><br>"Commerciele Binnendienst Medewerker" krijgt 3x meer views dan "Sales Ninja"</p>
+</div>
+<p>Heb je al gedacht aan het A/B testen van je functietitels?</p>
+<p>Succes deze week,<br><strong>Wouter</strong></p>
+</div>""",
+
+        5: f"""<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333333;">
+<p>Hoi {voornaam},</p>
+<p>"Salaris: marktconform" - de meest waardeloze zin in recruitment.</p>
+<p>Hier is wat de data zegt:</p>
+<div style="background-color: #D1FAE5; border-left: 4px solid #10B981; padding: 15px 20px; margin: 20px 0;">
+<p style="margin: 0 0 10px 0;"><strong>Vacatures met salarisindicatie krijgen:</strong></p>
+<ul style="margin: 0 0 10px 0; padding-left: 20px; list-style: none;">
+<li>✅ +35% meer sollicitaties</li>
+<li>✅ +27% hogere kwaliteit kandidaten</li>
+<li>✅ +40% snellere time-to-hire</li>
+</ul>
+<p style="margin: 0; font-size: 12px; color: #666; font-style: italic;">Bron: Indeed Hiring Lab 2024</p>
+</div>
+<p><strong>Maar wat als je het niet mag vermelden?</strong></p>
+<p>Alternatieven die ook werken:</p>
+<ul style="margin: 15px 0; padding-left: 20px;">
+<li>"Salarisindicatie: vanaf EUR 3.500 bruto/maand"</li>
+<li>"Indicatie: schaal 8-10 CAO [naam]"</li>
+<li>"Budget: EUR 45.000 - 55.000 op jaarbasis"</li>
+</ul>
+<p>Zelfs een range is beter dan niets.</p>
+<p>Groeten,<br><strong>Wouter</strong></p>
+</div>""",
+
+        6: f"""<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333333;">
+<p>Hoi {voornaam},</p>
+<p>Wist je dat kandidaten gemiddeld <strong>6 seconden</strong> besteden aan de eerste scan van een vacature?</p>
+<p>In die 6 seconden beslissen ze of ze doorlezen of wegklikken.</p>
+<div style="background-color: #EDE9FE; border-left: 4px solid #7C3AED; padding: 15px 20px; margin: 20px 0;">
+<p style="margin: 0 0 10px 0;"><strong>Wat ze scannen:</strong></p>
+<ol style="margin: 0 0 15px 0; padding-left: 20px;">
+<li>Functietitel</li>
+<li>Salaris (als het er staat)</li>
+<li>De eerste 2-3 zinnen</li>
+<li>Locatie</li>
+<li>Logo/bedrijfsnaam</li>
+</ol>
+<p style="margin: 0 0 10px 0;"><strong>Het probleem:</strong> 90% begint met "Wij zoeken een enthousiaste..."</p>
+<p style="margin: 0;"><strong>De oplossing:</strong> Start met een vraag of bold statement.</p>
+</div>
+<p>Pak eens een van je huidige vacatures erbij. Hoe is de opening?</p>
+<p>Tot volgende week,<br><strong>Wouter</strong></p>
+<p style="color: #999999; font-size: 12px; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eeeeee;">
+Dit was de laatste tip in deze serie. Vond je ze nuttig? Laat het me weten.</p>
+</div>""",
+
+        7: f"""<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333333;">
+<p>Hoi {voornaam},</p>
+<p>Het is nu drie weken geleden dat je de vacature-analyse ontving.</p>
+<p>Ik ben benieuwd hoe het gaat met je werving. Heb je de kandidaat al gevonden? Of loop je nog ergens tegenaan?</p>
+<div style="background-color: #f8f9fa; border-left: 4px solid #EF7D00; padding: 15px 20px; margin: 20px 0;">
+<p style="margin: 0 0 10px 0; font-size: 16px;"><strong>Zullen we even bellen?</strong></p>
+<p style="margin: 0 0 15px 0;">Geen verkooppraatje, gewoon een kort gesprek (15 min) om te kijken of ik je ergens mee kan helpen.</p>
+<p style="margin: 0 0 10px 0;"><strong>We kunnen het hebben over:</strong></p>
+<ul style="margin: 0 0 15px 0; padding-left: 20px;">
+<li>De resultaten van je huidige vacature</li>
+<li>Andere openstaande posities</li>
+<li>Recruitment uitdagingen waar je tegenaan loopt</li>
+</ul>
+<p style="margin: 0;">
+<a href="https://calendly.com/wouter-arts-/vacature-analyse-advies" style="display: inline-block; background-color: #EF7D00; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Plan een moment dat jou uitkomt</a>
+</p>
+</div>
+<p>Geen zin of geen tijd? Reply dan gewoon even met een update.</p>
+<p>Groeten,<br><strong>Wouter</strong></p>
+</div>""",
+
+        8: f"""<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333333;">
+<p>Hoi {voornaam},</p>
+<p>Een maand geleden verstuurde ik de analyse voor je <strong>{functie_titel}</strong> vacature.</p>
+<p>Dit is mijn laatste mail in deze serie - daarna laat ik je met rust.</p>
+<p>Maar voor ik ga, ben ik nieuwsgierig:</p>
+<div style="background-color: #f8f9fa; border: 1px solid #e0e0e0; padding: 15px 20px; margin: 20px 0; border-radius: 5px;">
+<p style="margin: 0 0 10px 0;"><strong>Hoe is het gegaan?</strong></p>
+<table style="width: 100%; border-collapse: collapse;">
+<tr><td style="padding: 5px 0;"><strong>A.</strong> Kandidaat gevonden - top!</td></tr>
+<tr><td style="padding: 5px 0;"><strong>B.</strong> Nog bezig - maar gaat goed</td></tr>
+<tr><td style="padding: 5px 0;"><strong>C.</strong> Vacature on hold gezet</td></tr>
+<tr><td style="padding: 5px 0;"><strong>D.</strong> Hulp nodig - laten we bellen</td></tr>
+</table>
+<p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">Reply met A, B, C of D (of vertel gewoon je verhaal)</p>
+</div>
+<p>Hoe dan ook - succes met je recruitment!</p>
+<p>Groeten,<br><strong>Wouter</strong><br><span style="color: #666666;">kandidatentekort.nl</span></p>
+<p style="color: #999999; font-size: 12px; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eeeeee;">
+Contact: warts@recruitin.nl | Nieuwe vacature? <a href="https://kandidatentekort.nl" style="color: #EF7D00;">kandidatentekort.nl</a></p>
+</div>"""
+    }
+
+    return templates.get(email_num, "")
+
+
+def get_nurture_email_subject(email_num):
+    """Get subject line for nurture email"""
+    subjects = {
+        1: "Even checken - alles goed ontvangen?",
+        2: "Is het gelukt om de aanpassingen door te voeren?",
+        3: "Benieuwd - merk je al verschil?",
+        4: "Recruitment tip: De kracht van de juiste functietitel",
+        5: "Recruitment tip: Het salarisvraagstuk",
+        6: "Recruitment tip: De eerste 6 seconden",
+        7: "Zullen we eens bellen?",
+        8: "Laatste check - hoe staat het ervoor?"
+    }
+    return subjects.get(email_num, "Follow-up van kandidatentekort.nl")
+
+
+def send_nurture_email(to_email, email_num, voornaam, functie_titel):
+    """Send a nurture sequence email"""
+    if not GMAIL_APP_PASSWORD:
+        logger.warning("No Gmail password configured")
+        return False
+
+    try:
+        subject = get_nurture_email_subject(email_num)
+        html_content = get_nurture_email_html(email_num, voornaam, functie_titel)
+
+        if not html_content:
+            logger.error(f"No template for email {email_num}")
+            return False
+
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = f"Wouter van kandidatentekort.nl <{GMAIL_USER}>"
+        msg['To'] = to_email
+        msg['Reply-To'] = "warts@recruitin.nl"
+
+        msg.attach(MIMEText(html_content, 'html'))
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+            server.send_message(msg)
+
+        logger.info(f"✅ Sent nurture email {email_num} to {to_email}")
+        return True
+
+    except Exception as e:
+        logger.error(f"❌ Failed to send nurture email: {e}")
+        return False
+
+
+def update_deal_nurture_status(deal_id, email_num):
+    """Update deal fields after sending nurture email"""
+    if not PIPEDRIVE_API_TOKEN:
+        return False
+
+    try:
+        # Map email number to option ID (Pipedrive enum options)
+        email_options = {
+            1: "Email 1", 2: "Email 2", 3: "Email 3", 4: "Email 4",
+            5: "Email 5", 6: "Email 6", 7: "Email 7", 8: "Email 8"
+        }
+
+        update_data = {
+            FIELD_LAATSTE_EMAIL: email_options.get(email_num, "Email 1")
+        }
+
+        # If email 8, mark sequence as complete
+        if email_num == 8:
+            update_data[FIELD_EMAIL_SEQUENCE_STATUS] = "Completed"
+
+        response = requests.put(
+            f"{PIPEDRIVE_BASE}/deals/{deal_id}",
+            params={"api_token": PIPEDRIVE_API_TOKEN},
+            json=update_data,
+            timeout=30
+        )
+
+        if response.status_code == 200:
+            logger.info(f"✅ Updated deal {deal_id} nurture status to Email {email_num}")
+            return True
+        else:
+            logger.warning(f"Failed to update deal: {response.status_code}")
+            return False
+
+    except Exception as e:
+        logger.error(f"Error updating deal: {e}")
+        return False
+
+
+def get_deals_for_nurture():
+    """Get all deals that need nurture emails today"""
+    if not PIPEDRIVE_API_TOKEN:
+        return []
+
+    try:
+        # Get all deals from pipeline
+        response = requests.get(
+            f"{PIPEDRIVE_BASE}/deals",
+            params={
+                "api_token": PIPEDRIVE_API_TOKEN,
+                "pipeline_id": PIPELINE_ID,
+                "status": "open",
+                "limit": 500
+            },
+            timeout=30
+        )
+
+        if response.status_code != 200:
+            logger.error(f"Failed to get deals: {response.status_code}")
+            return []
+
+        deals = response.json().get('data', []) or []
+        deals_to_email = []
+        today = datetime.now().date()
+
+        for deal in deals:
+            # Get custom field values
+            rapport_date_str = deal.get(FIELD_RAPPORT_VERZONDEN)
+            sequence_status = deal.get(FIELD_EMAIL_SEQUENCE_STATUS, '')
+            laatste_email = deal.get(FIELD_LAATSTE_EMAIL, '')
+
+            # Skip if no rapport date or sequence not active
+            if not rapport_date_str:
+                continue
+
+            # Skip if sequence is completed, paused, or responded
+            if sequence_status in ['Completed', 'Gepauzeerd', 'Voltooid', 'Responded', 'Unsubscribed']:
+                continue
+
+            # Parse rapport date
+            try:
+                rapport_date = datetime.strptime(rapport_date_str, '%Y-%m-%d').date()
+            except:
+                continue
+
+            days_since_rapport = (today - rapport_date).days
+
+            # Determine which email to send
+            current_email = 0
+            if laatste_email:
+                try:
+                    current_email = int(laatste_email.replace('Email ', ''))
+                except:
+                    pass
+
+            next_email = current_email + 1
+
+            # Check if it's time to send the next email
+            if next_email <= 8:
+                scheduled_day = EMAIL_SCHEDULE.get(next_email, {}).get('day', 999)
+                if days_since_rapport >= scheduled_day:
+                    # Get person info for email
+                    person_id = deal.get('person_id', {})
+                    if isinstance(person_id, dict):
+                        person_id = person_id.get('value')
+
+                    deals_to_email.append({
+                        'deal_id': deal.get('id'),
+                        'deal_title': deal.get('title', ''),
+                        'person_id': person_id,
+                        'next_email': next_email,
+                        'days_since': days_since_rapport
+                    })
+
+        logger.info(f"📧 Found {len(deals_to_email)} deals ready for nurture emails")
+        return deals_to_email
+
+    except Exception as e:
+        logger.error(f"Error getting deals for nurture: {e}")
+        return []
+
+
+def get_person_email(person_id):
+    """Get person's email and name from Pipedrive"""
+    if not PIPEDRIVE_API_TOKEN or not person_id:
+        return None, None
+
+    try:
+        response = requests.get(
+            f"{PIPEDRIVE_BASE}/persons/{person_id}",
+            params={"api_token": PIPEDRIVE_API_TOKEN},
+            timeout=30
+        )
+
+        if response.status_code == 200:
+            person = response.json().get('data', {})
+            emails = person.get('email', [])
+            email = emails[0].get('value') if emails else None
+            name = person.get('first_name', 'daar')
+            return email, name
+    except Exception as e:
+        logger.error(f"Error getting person: {e}")
+
+    return None, None
+
+
+def process_nurture_emails():
+    """Process all pending nurture emails"""
+    logger.info("🔄 Starting nurture email processing...")
+
+    deals = get_deals_for_nurture()
+    sent_count = 0
+
+    for deal in deals:
+        try:
+            email, voornaam = get_person_email(deal['person_id'])
+
+            if not email:
+                logger.warning(f"No email for deal {deal['deal_id']}")
+                continue
+
+            # Extract functie from deal title
+            functie_titel = deal['deal_title'].replace('Vacature Analyse - ', '').split(' - ')[0]
+
+            # Send the email
+            success = send_nurture_email(
+                email,
+                deal['next_email'],
+                voornaam or 'daar',
+                functie_titel
+            )
+
+            if success:
+                # Update Pipedrive
+                update_deal_nurture_status(deal['deal_id'], deal['next_email'])
+                sent_count += 1
+
+            # Small delay between emails
+            time.sleep(2)
+
+        except Exception as e:
+            logger.error(f"Error processing deal {deal.get('deal_id')}: {e}")
+
+    logger.info(f"✅ Nurture processing complete: {sent_count}/{len(deals)} emails sent")
+    return sent_count
+
+
+def start_nurture_deal(deal_id):
+    """Start nurture sequence for a specific deal"""
+    if not PIPEDRIVE_API_TOKEN:
+        return False
+
+    try:
+        today = datetime.now().strftime('%Y-%m-%d')
+
+        response = requests.put(
+            f"{PIPEDRIVE_BASE}/deals/{deal_id}",
+            params={"api_token": PIPEDRIVE_API_TOKEN},
+            json={
+                FIELD_RAPPORT_VERZONDEN: today,
+                FIELD_EMAIL_SEQUENCE_STATUS: "Actief"
+            },
+            timeout=30
+        )
+
+        if response.status_code == 200:
+            logger.info(f"✅ Started nurture sequence for deal {deal_id}")
+            return True
+        else:
+            logger.warning(f"Failed to start nurture: {response.status_code}")
+            return False
+
+    except Exception as e:
+        logger.error(f"Error starting nurture: {e}")
+        return False
+
+
+# Background scheduler for nurture emails
+def nurture_scheduler():
+    """Background thread that checks for nurture emails every hour"""
+    while True:
+        try:
+            # Run at specific times (9 AM, 2 PM Dutch time)
+            now = datetime.now()
+            if now.hour in [9, 14]:
+                logger.info("⏰ Scheduled nurture check running...")
+                process_nurture_emails()
+        except Exception as e:
+            logger.error(f"Scheduler error: {e}")
+
+        # Sleep for 1 hour
+        time.sleep(3600)
+
+
+@app.route("/health", methods=["GET"])
+def health_check():
+    return jsonify({
+        "status": "healthy",
+        "version": "5.0",
+        "features": ["typeform", "analysis", "nurture"],
+        "email": bool(GMAIL_APP_PASSWORD),
+        "pipedrive": bool(PIPEDRIVE_API_TOKEN),
+        "claude": bool(ANTHROPIC_API_KEY)
+    }), 200
+
+
+@app.route("/nurture/process", methods=["POST"])
+def trigger_nurture_processing():
+    """Manually trigger nurture email processing"""
+    count = process_nurture_emails()
+    return jsonify({
+        "success": True,
+        "emails_sent": count
+    }), 200
+
+
+@app.route("/nurture/start/<int:deal_id>", methods=["POST"])
+def start_nurture_for_deal(deal_id):
+    """Start nurture sequence for a specific deal"""
+    success = start_nurture_deal(deal_id)
+    return jsonify({"success": success, "deal_id": deal_id}), 200 if success else 500
+
+
+@app.route("/nurture/status", methods=["GET"])
+def nurture_status():
+    """Get status of nurture sequences"""
+    deals = get_deals_for_nurture()
+    return jsonify({
+        "pending_emails": len(deals),
+        "deals": deals[:20]  # Limit response
+    }), 200
+
+
+@app.route("/nurture/test/<int:email_num>", methods=["GET"])
+def test_nurture_email(email_num):
+    """Send a test nurture email"""
+    to = request.args.get('to', 'warts@recruitin.nl')
+    voornaam = request.args.get('name', 'Test')
+    functie = request.args.get('functie', 'Senior Developer')
+
+    success = send_nurture_email(to, email_num, voornaam, functie)
+    return jsonify({
+        "success": success,
+        "email_num": email_num,
+        "to": to
+    }), 200 if success else 500
+
+
 if __name__ == "__main__":
+    # Start background scheduler for nurture emails
+    scheduler_thread = threading.Thread(target=nurture_scheduler, daemon=True)
+    scheduler_thread.start()
+    logger.info("🚀 Nurture scheduler started")
+
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
