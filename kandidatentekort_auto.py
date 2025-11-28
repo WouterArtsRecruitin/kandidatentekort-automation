@@ -71,6 +71,10 @@ EMAIL_SCHEDULE = {
     8: {"day": 30, "template_id": 62, "name": "Final Check-in"},
 }
 
+# Stage filter: Only send nurture emails to deals in stage 21 (Gekwalificeerd)
+# Deals in stage 22+ have active contact, so no automated emails needed
+NURTURE_ACTIVE_STAGE = 21  # Gekwalificeerd
+
 
 def extract_text_from_file(file_url):
     """
@@ -1319,6 +1323,11 @@ def get_deals_for_nurture():
         today = datetime.now().date()
 
         for deal in deals:
+            # Only process deals in Gekwalificeerd stage (21)
+            stage_id = deal.get('stage_id')
+            if stage_id != NURTURE_ACTIVE_STAGE:
+                continue
+
             # Get custom field values
             rapport_date_str = deal.get(FIELD_RAPPORT_VERZONDEN)
             sequence_status = deal.get(FIELD_EMAIL_SEQUENCE_STATUS, '')
@@ -1367,7 +1376,7 @@ def get_deals_for_nurture():
                         'days_since': days_since_rapport
                     })
 
-        logger.info(f"📧 Found {len(deals_to_email)} deals ready for nurture emails")
+        logger.info(f"📧 Found {len(deals_to_email)} deals in stage {NURTURE_ACTIVE_STAGE} (Gekwalificeerd) ready for nurture emails")
         return deals_to_email
 
     except Exception as e:
