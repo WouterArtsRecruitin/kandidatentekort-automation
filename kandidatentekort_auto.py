@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V5.0
+KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V5.1
 Deploy: Render.com | Updated: 2025-11-28
 - V2: Pipedrive organization, person, deal creation
 - V3: Claude AI vacancy analysis + report email
@@ -10,7 +10,7 @@ Deploy: Render.com | Updated: 2025-11-28
 - V4.0: ULTIMATE email template - Score visualization, Category breakdown,
         Before/After comparison, Full improved text, Numbered checklist, Bonus tips
 - V4.1: OUTLOOK COMPATIBLE - Full table-based layout, MSO conditionals, no flex/gradients
-- V5.0: TRUST-FIRST EMAIL NURTURE - 8 automated follow-up emails over 30 days
+- V5.1: TRUST-FIRST EMAIL NURTURE - 8 automated follow-up emails over 30 days
 """
 
 import os
@@ -744,10 +744,30 @@ def parse_typeform_data(webhook_data):
     }
 
     try:
+        # ============================================
+        # V5.1: Check for Zapier FLAT format first
+        # ============================================
+        if 'email' in webhook_data and 'form_response' not in webhook_data:
+            logger.info("📋 Detected Zapier FLAT format")
+            result['email'] = webhook_data.get('email', '')
+            result['voornaam'] = webhook_data.get('voornaam', 'daar')
+            result['contact'] = f"{webhook_data.get('voornaam', '')} {webhook_data.get('achternaam', '')}".strip() or 'Onbekend'
+            result['telefoon'] = webhook_data.get('telefoon', webhook_data.get('phone', ''))
+            result['bedrijf'] = webhook_data.get('bedrijf', webhook_data.get('company', 'Onbekend'))
+            result['vacature'] = webhook_data.get('vacature', webhook_data.get('vacancy', ''))
+            result['functie'] = (webhook_data.get('functie', '') or webhook_data.get('vacature', 'vacature'))[:50]
+            result['sector'] = webhook_data.get('sector', '')
+            result['file_url'] = webhook_data.get('file_url', webhook_data.get('file', ''))
+            logger.info(f"📋 Zapier parsed: email={result['email']}, contact={result['contact']}, bedrijf={result['bedrijf']}")
+            return result
+
+        # ============================================
+        # Original Typeform NESTED format
+        # ============================================
         form_response = webhook_data.get('form_response', {})
         answers = form_response.get('answers', [])
 
-        logger.info(f"📋 Parsing {len(answers)} answers")
+        logger.info(f"📋 Parsing Typeform format: {len(answers)} answers")
 
         # Collect all values by type
         texts = []  # All short_text values
@@ -934,7 +954,7 @@ def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="
 def home():
     return jsonify({
         "status": "healthy",
-        "version": "5.0",
+        "version": "5.1",
         "features": ["typeform", "analysis", "nurture"],
         "email": bool(GMAIL_APP_PASSWORD),
         "pipedrive": bool(PIPEDRIVE_API_TOKEN),
@@ -1048,7 +1068,7 @@ def debug_webhook():
 
 
 # =============================================================================
-# TRUST-FIRST EMAIL NURTURE SYSTEM V5.0
+# TRUST-FIRST EMAIL NURTURE SYSTEM V5.1
 # =============================================================================
 
 def get_nurture_email_html(email_num, voornaam, functie_titel):
@@ -1500,7 +1520,7 @@ def nurture_scheduler():
 def health_check():
     return jsonify({
         "status": "healthy",
-        "version": "5.0",
+        "version": "5.1",
         "features": ["typeform", "analysis", "nurture"],
         "email": bool(GMAIL_APP_PASSWORD),
         "pipedrive": bool(PIPEDRIVE_API_TOKEN),
