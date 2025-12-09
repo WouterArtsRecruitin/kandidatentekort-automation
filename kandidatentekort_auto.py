@@ -265,36 +265,59 @@ def analyze_vacancy_with_claude(vacature_text, bedrijf, sector=""):
         logger.error("❌ ANTHROPIC_API_KEY not set!")
         return None
 
-    prompt = f"""Je bent een expert recruitment copywriter gespecialiseerd in de Nederlandse technische arbeidsmarkt. Analyseer deze vacaturetekst en verbeter ze voor maximale kandidaat-conversie.
+    prompt = f"""Je bent een Nederlandse recruitment expert met 15+ jaar ervaring in het schrijven van vacatureteksten die kandidaten daadwerkelijk triggeren om te reageren. Je kent alle ins en outs van de Nederlandse arbeidsmarkt, met speciale expertise in technische, logistieke en commerciële functies.
+
+Je schrijfstijl kenmerkt zich door: natuurlijke Nederlandse taal (geen jargon), concrete voorbeelden, focus op wat kandidaten écht belangrijk vinden, en een menselijke, persoonlijke toon die bedrijven onderscheidt van hun concurrenten.
 
 ## VACATURETEKST OM TE ANALYSEREN:
-
 {vacature_text}
 
-## CONTEXT:
-- Bedrijf: {bedrijf}
-- Sector: {sector if sector else 'Niet opgegeven'}
+## BEDRIJF: {bedrijf}
+## SECTOR: {sector if sector else 'Algemeen'}
 
 ## JOUW OPDRACHT:
+1. Analyseer deze vacaturetekst kritisch
+2. Geef een eerlijke score op basis van 4 criteria
+3. Lever concrete, direct implementeerbare verbeteringen
+4. Herschrijf de vacature zodat deze kandidaten triggert om te reageren
+5. Focus op wat kandidaten ECHT belangrijk vinden (niet wat bedrijven denken)
 
-Analyseer deze vacaturetekst en lever het volgende in EXACT dit JSON format:
+## SCORING CRITERIA:
+- **Aantrekkelijkheid** (1-10): Triggert dit kandidaten om door te lezen? Is het onderscheidend?
+- **Duidelijkheid** (1-10): Weet een kandidaat precies wat de functie inhoudt en wat geboden wordt?
+- **USP's** (1-10): Wat maakt dit bedrijf/functie uniek? Waarom hier en niet ergens anders?
+- **Call-to-action** (1-10): Weet de kandidaat wat te doen? Is de drempel laag?
 
+## OUTPUT STRUCTUUR - EXACT DIT JSON FORMAT:
 {{
-    "overall_score": 7.2,
-    "score_section": "Aantrekkelijkheid: 7/10 - Duidelijkheid: 6/10 - USP's: 5/10 - Call-to-action: 8/10",
+    "overall_score": 6.8,
+    "score_section": "Aantrekkelijkheid: 6/10 (te generiek, mist persoonlijke touch) • Duidelijkheid: 8/10 (functie helder, salaris ontbreekt) • USP's: 5/10 (waarom dit bedrijf?) • Call-to-action: 8/10 (duidelijke sollicitatie-instructies)",
     "top_3_improvements": [
-        "Eerste concrete verbetering",
-        "Tweede concrete verbetering",
-        "Derde concrete verbetering"
+        "Start met een pakkende openingszin die kandidaten direct aanspreekt - niet weer zo'n saaie 'Wij zoeken' opening",
+        "Voeg concrete salarisrange toe (kandidaten willen dit weten!) en benoem unieke secundaire voorwaarden",
+        "Vertel wat dit bedrijf écht anders maakt - cultuur, sfeer, doorgroeimogelijkheden met concrete voorbeelden"
     ],
-    "improved_text": "De volledige verbeterde vacaturetekst hier (400-600 woorden, pakkende opening, duidelijke functie-inhoud, concrete arbeidsvoorwaarden, sterke employer branding, overtuigende call-to-action)",
+    "improved_text": "[HERSCHRIJF DE COMPLETE VACATURE - 400-600 woorden]\\n\\nSTRUCTUUR:\\n1. Pakkende opening (geen 'wij zoeken')\\n2. Wat ga je ECHT doen (concreet, een dag uit het leven)\\n3. Wat bieden we jou (salaris, cultuur, ontwikkeling)\\n4. Wie zoeken we (realistisch, geen superhelden)\\n5. Overtuigende call-to-action\\n\\nSCHRIJFSTIJL:\\n- Schrijf vanuit 'je/jou' perspectief\\n- Gebruik concrete voorbeelden\\n- Wees eerlijk en menselijk\\n- Geen bullshit-bingo of holle termen",
     "bonus_tips": [
-        "Eerste bonus tip voor de recruiter",
-        "Tweede bonus tip"
+        "Post deze vacature op vrijdagmiddag of maandagochtend voor maximaal bereik - vermijd dinsdag t/m donderdag",
+        "Test de vacature met iemand uit je doelgroep - vraag wat hen wel/niet aanspreekt",
+        "Voeg een video/foto toe van het team - kandidaten willen zien met wie ze gaan werken"
     ]
 }}
 
-BELANGRIJK: Antwoord ALLEEN met valid JSON, geen tekst ervoor of erna."""
+## BELANGRIJKE SCHRIJFREGELS:
+1. Geen clichés zoals "dynamisch bedrijf", "informele sfeer", "hands-on mentaliteit"
+2. Wees specifiek: niet "marktconform salaris" maar "€3.500-€4.500"
+3. Gebruik voorbeelden: niet "afwisselend werk" maar "de ene dag X, de andere dag Y"
+4. Schrijf menselijk: alsof je het aan een vriend vertelt
+5. Focus op wat kandidaten krijgen, niet wat jij zoekt
+
+## LET OP:
+- Output ALLEEN valid JSON
+- Geen extra tekst voor of na de JSON
+- overall_score is een float (bijv. 7.5)
+- Alle strings in quotes
+- Arrays correct geformatteerd"""
 
     try:
         logger.info("🤖 Starting Claude analysis...")
