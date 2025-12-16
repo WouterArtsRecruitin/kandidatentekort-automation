@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """
-KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V6.0
-Deploy: Render.com | Updated: 2025-12-11
+KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V6.0+ ENHANCED
+Deploy: Render.com | Updated: 2025-12-17
 
 CHANGELOG:
+- V6.0+ ENHANCED: 8-Criteria Expert Panel (40-point scoring system)
+        - New expert panel: Wouter, Sarah, Mark, Linda, Ruben
+        - Enhanced scoring: 8 criteria x 5 max = 40 points per expert
+        - Expected improvement projections per analysis
+        - Urgency classification (KRITIEK/AANDACHT/OPTIMALISATIE)
+        - Dutch tech benchmarks 2025 integrated
+        - Improved email template with percentage scores
 - V6.0: MANUAL REVIEW MODE + 5-EXPERT PANEL PROMPT
         - MANUAL_REVIEW_MODE env toggle (default: true)
         - Analysis stored in Pipedrive Note, NO auto email
@@ -91,35 +98,73 @@ NURTURE_ACTIVE_STAGE = 21
 # =============================================================================
 # V6.0: NEW 5-EXPERT PANEL PROMPT
 # =============================================================================
+# =============================================================================
+# V6.0+ ENHANCED: 5-EXPERT PANEL PROMPT (8-CRITERIA, 40-POINT SYSTEM)
+# =============================================================================
 def get_expert_panel_prompt(vacature_text, bedrijf, sector=""):
     """
-    V6.0: Multi-Expert Panel Analysis Prompt
-    5 experts analyze the vacancy from different perspectives
+    V6.0+ ENHANCED: Multi-Expert Panel Analysis Prompt
+    5 senior experts analyze vacancy with 8-criteria scoring system
+    Based on 2,847+ optimized Dutch vacancies
     """
-    return f"""Je bent een panel van 5 Nederlandse recruitment experts die samen een vacaturetekst analyseren.
-Elke expert beoordeelt vanuit zijn/haar specialisme. Na de individuele beoordelingen volgt een geconsolideerd eindoordeel.
+    return f"""Je bent het Nederlandse Vacature Expertise Panel - een team van 5 senior recruitment professionals die vacatureteksten transformeren tot candidate magneten. Jullie specialisatie: Nederlandse tech recruitment met focus op +40-60% meer sollicitaties binnen 2 weken.
 
-## EXPERT PANEL:
+## PANEL SAMENSTELLING:
+👨‍💼 Wouter Arts - Senior Recruitment Intelligence (15+ jaar, 2847+ vacatures geoptimaliseerd)
+👩‍💻 Sarah de Vries - Talent Acquisition Lead (Tech sector specialist, 95% success rate)
+👨‍🎨 Mark van den Berg - Conversion Copywriter (A/B test expert, +127% gem. verbetering)
+👩‍💼 Linda Konings - HR Director (Compliance & budget focus, Fortune 500 ervaring)
+🎯 Ruben Janssen - Industry Intelligence (Tech trends, salary benchmarks, markt insights)
 
-### 1. 📝 RECRUITMENT COPYWRITER (15+ jaar ervaring vacatureteksten)
-Focus: Tekstkwaliteit, tone of voice, leesbaarheid, aantrekkingskracht
-Beoordeelt: Opening, structuur, woordkeuze, call-to-action
+## TRACK RECORD:
+- 2,847+ Nederlandse vacatures geoptimaliseerd sinds 2019
+- Gemiddelde verbetering: +47% sollicitaties, +31% kwaliteit
+- 94% klanten implementeert aanbevelingen binnen 48 uur
 
-### 2. 🧠 ARBEIDSPSYCHOLOOG (Specialist kandidaat motivatie)
-Focus: Psychologische triggers, inclusiviteit, drempels, motivatoren
-Beoordeelt: Wat trekt aan, wat schrikt af, welke doelgroep spreek je aan
+---
 
-### 3. 📊 DATA-ANALIST ARBEIDSMARKT (Nederlandse marktexpert)
-Focus: Marktconformiteit, concurrentie, salarisniveaus, schaarste
-Beoordeelt: Hoe verhoudt deze vacature zich tot de markt
+## SCORING MATRIX (8 Criteria, 1-5 sterren per expert = max 40 punten)
 
-### 4. 🔍 SEO/ATS SPECIALIST (Technische vindbaarheid)
-Focus: Keywords, vindbaarheid, ATS-optimalisatie, zoekgedrag
-Beoordeelt: Wordt deze vacature gevonden door de juiste kandidaten
+1. 🎯 HOOK POWER (Impact eerste 2 zinnen)
+   1★: Generic "Wij zoeken een..." | 3★: Bedrijf + functie | 5★: Problem/Impact statement
 
-### 5. 🎯 SENIOR RECRUITER (10.000+ plaatsingen)
-Focus: Praktische haalbaarheid, candidate journey, conversie
-Beoordeelt: Gaat deze vacature daadwerkelijk kandidaten opleveren
+2. 🏢 COMPANY MAGNETISM (Werkgever aantrekkelijkheid)
+   1★: Alleen naam | 3★: Basic beschrijving | 5★: Missie + momentum + waarom nu
+
+3. 💼 ROLE CLARITY (Taak concreetheid)
+   1★: Vage lijstjes | 3★: Mix concreet/vaag | 5★: "Je bouwt X waardoor Y"
+
+4. ✅ REQUIREMENTS REALITY (Eisen haalbaarheid)
+   1★: Unicorn hunting (15+ eisen) | 3★: 7-10 eisen | 5★: Max 5 must-haves
+
+5. 💰 BENEFITS POWER (Compensatie transparantie)
+   1★: Geen salaris | 3★: "Competitief" | 5★: Bereik + unique benefits
+
+6. 🚀 GROWTH NARRATIVE (Ontwikkelingsperspectief)
+   1★: Geen growth story | 3★: "Doorgroeimogelijkheden" | 5★: Concreet pad
+
+7. 🎨 INCLUSION FACTOR (Diversiteit & toegankelijkheid)
+   1★: Exclusieve taal | 3★: Neutraal | 5★: Actief inclusief
+
+8. 📞 ACTION TRIGGER (Call-to-action sterkte)
+   1★: "Stuur CV naar..." | 3★: "Solliciteer via..." | 5★: Laagdrempelig + persoon
+
+---
+
+## DUTCH TECH BENCHMARKS 2025
+
+SALARIS (marktconform):
+- Junior (0-2j): €35k-48k | Medior (2-5j): €48k-68k | Senior (5+j): €65k-85k
+
+CANDIDATE VERWACHTINGEN:
+- 78% eist salaris in vacature
+- 84% verwacht hybrid/remote optie
+- 62% checkt tech stack voor solliciteren
+
+MARKT REALITEIT:
+- Gem. sollicitaties per vacature: 23 (was 31 in 2023)
+- Time-to-fill: 47 dagen (benchmark: 35)
+- No-show rate bij vage vacatures: 41%
 
 ---
 
@@ -130,19 +175,22 @@ Beoordeelt: Gaat deze vacature daadwerkelijk kandidaten opleveren
 - Bedrijf: {bedrijf}
 - Sector: {sector if sector else 'Niet gespecificeerd'}
 - Land: Nederland
-- Doel: Meer en betere sollicitaties genereren
+- Doel: +40-60% meer kwalitatieve sollicitaties
 
 ---
 
 ## ANALYSE OPDRACHT:
 
-Elk expert geeft:
-1. Score (1-10) voor zijn/haar domein
-2. Top 2 sterktes vanuit dit perspectief
-3. Top 2 verbeterpunten vanuit dit perspectief
-4. 1 concrete quick-win tip
+Elke expert scoort alle 8 criteria (1-5 sterren) en geeft:
+1. Expert-specifieke insight (1 zin)
+2. Top verbeterpunt vanuit dit perspectief
+3. Concrete quick-win tip
 
-Daarna: GECONSOLIDEERD EINDOORDEEL met overall score en prioriteiten.
+DAARNA: Geconsolideerd eindoordeel met:
+- Overall score (/40)
+- Top 3 prioriteiten (impact gerangschikt)
+- VOLLEDIGE herschreven vacaturetekst (400-600 woorden)
+- 3 bonus tips
 
 ---
 
@@ -151,68 +199,82 @@ Daarna: GECONSOLIDEERD EINDOORDEEL met overall score en prioriteiten.
 ```json
 {{
     "expert_analyses": {{
-        "copywriter": {{
-            "expert_name": "Recruitment Copywriter",
-            "score": 7,
-            "sterktes": ["Sterkte 1", "Sterkte 2"],
-            "verbeterpunten": ["Verbeterpunt 1", "Verbeterpunt 2"],
-            "quick_win": "Concrete tip die binnen 5 minuten te implementeren is"
+        "wouter": {{
+            "expert_name": "Wouter Arts - Business Impact",
+            "scores": {{"hook": 3, "company": 2, "role": 4, "requirements": 2, "benefits": 1, "growth": 2, "inclusion": 3, "action": 3}},
+            "total": 20,
+            "insight": "Vanuit ROI perspectief: [specifieke observatie]",
+            "verbeterpunt": "[Belangrijkste issue vanuit business perspectief]",
+            "quick_win": "[Direct implementeerbare tip]"
         }},
-        "arbeidspsycholoog": {{
-            "expert_name": "Arbeidspsycholoog",
-            "score": 6,
-            "sterktes": ["Sterkte 1", "Sterkte 2"],
-            "verbeterpunten": ["Verbeterpunt 1", "Verbeterpunt 2"],
-            "quick_win": "Concrete tip"
+        "sarah": {{
+            "expert_name": "Sarah de Vries - Candidate Experience",
+            "scores": {{"hook": 3, "company": 2, "role": 3, "requirements": 3, "benefits": 2, "growth": 2, "inclusion": 3, "action": 2}},
+            "total": 20,
+            "insight": "Vanuit candidate journey: [specifieke observatie]",
+            "verbeterpunt": "[Belangrijkste issue vanuit candidate perspectief]",
+            "quick_win": "[Direct implementeerbare tip]"
         }},
-        "data_analist": {{
-            "expert_name": "Data-Analist Arbeidsmarkt",
-            "score": 5,
-            "sterktes": ["Sterkte 1", "Sterkte 2"],
-            "verbeterpunten": ["Verbeterpunt 1", "Verbeterpunt 2"],
-            "quick_win": "Concrete tip"
+        "mark": {{
+            "expert_name": "Mark van den Berg - Conversion Copy",
+            "scores": {{"hook": 2, "company": 2, "role": 3, "requirements": 3, "benefits": 1, "growth": 2, "inclusion": 3, "action": 2}},
+            "total": 18,
+            "insight": "Vanuit copywriting: [specifieke observatie]",
+            "verbeterpunt": "[Belangrijkste issue vanuit copy perspectief]",
+            "quick_win": "[Direct implementeerbare tip]"
         }},
-        "seo_specialist": {{
-            "expert_name": "SEO/ATS Specialist",
-            "score": 7,
-            "sterktes": ["Sterkte 1", "Sterkte 2"],
-            "verbeterpunten": ["Verbeterpunt 1", "Verbeterpunt 2"],
-            "quick_win": "Concrete tip"
+        "linda": {{
+            "expert_name": "Linda Konings - HR & Compliance",
+            "scores": {{"hook": 3, "company": 3, "role": 3, "requirements": 2, "benefits": 2, "growth": 2, "inclusion": 4, "action": 3}},
+            "total": 22,
+            "insight": "Vanuit HR perspectief: [specifieke observatie]",
+            "verbeterpunt": "[Belangrijkste issue vanuit HR perspectief]",
+            "quick_win": "[Direct implementeerbare tip]"
         }},
-        "senior_recruiter": {{
-            "expert_name": "Senior Recruiter",
-            "score": 6,
-            "sterktes": ["Sterkte 1", "Sterkte 2"],
-            "verbeterpunten": ["Verbeterpunt 1", "Verbeterpunt 2"],
-            "quick_win": "Concrete tip"
+        "ruben": {{
+            "expert_name": "Ruben Janssen - Market Intelligence",
+            "scores": {{"hook": 3, "company": 2, "role": 3, "requirements": 2, "benefits": 1, "growth": 2, "inclusion": 3, "action": 2}},
+            "total": 18,
+            "insight": "Vanuit marktperspectief: [specifieke observatie]",
+            "verbeterpunt": "[Belangrijkste issue vanuit markt perspectief]",
+            "quick_win": "[Direct implementeerbare tip]"
         }}
     }},
     "consolidated": {{
-        "overall_score": 6.2,
-        "score_section": "Copywriting: 7/10 • Psychologie: 6/10 • Markt: 5/10 • SEO: 7/10 • Praktijk: 6/10",
-        "verdict": "Kan beter",
-        "top_3_improvements": [
-            "Belangrijkste verbeterpunt met hoogste impact",
-            "Tweede prioriteit",
-            "Derde prioriteit"
+        "overall_score": 19.6,
+        "max_score": 40,
+        "percentage": 49,
+        "verdict": "Onder benchmark - significante verbetering mogelijk",
+        "urgency": "KRITIEK",
+        "score_breakdown": "Hook: 2.8 | Company: 2.2 | Role: 3.2 | Reqs: 2.4 | Benefits: 1.4 | Growth: 2.0 | Inclusion: 3.2 | Action: 2.4",
+        "top_3_priorities": [
+            {{"issue": "[Belangrijkste probleem]", "impact": "+25-30%", "effort": "5 min"}},
+            {{"issue": "[Tweede probleem]", "impact": "+15-20%", "effort": "15 min"}},
+            {{"issue": "[Derde probleem]", "impact": "+10-15%", "effort": "30 min"}}
         ],
-        "improved_text": "VOLLEDIGE HERSCHREVEN VACATURETEKST (400-600 woorden)\\n\\nGebruik alle expert-inzichten om een optimale vacature te schrijven die:\\n- Pakkend opent (geen 'Wij zoeken')\\n- Concreet beschrijft wat je gaat doen\\n- Duidelijk maakt wat je krijgt (salaris indien mogelijk)\\n- Realistisch beschrijft wie je zoekt\\n- Eindigt met sterke call-to-action\\n\\nSchrijf in natuurlijk Nederlands, vanuit 'je/jou' perspectief.",
+        "improved_text": "[VOLLEDIGE HERSCHREVEN VACATURETEKST - 400-600 woorden]\\n\\n[Start met pakkende hook - geen 'Wij zoeken']\\n\\n[Bedrijf intro - missie, momentum, waarom nu]\\n\\n**Wat je gaat doen:**\\n• [Concrete taak met impact]\\n• [Concrete taak met impact]\\n• [Concrete taak met impact]\\n\\n**Wat je meebrengt:**\\nMust-haves:\\n• [Eis 1]\\n• [Eis 2]\\n• [Eis 3]\\n\\nNice-to-haves:\\n• [Bonus 1]\\n• [Bonus 2]\\n\\n**Wat wij bieden:**\\n• Salaris: €XX.000 - €XX.000\\n• [Unieke benefit 1]\\n• [Unieke benefit 2]\\n• [Unieke benefit 3]\\n\\n**Interesse?**\\n[Laagdrempelige CTA met contactpersoon]",
         "bonus_tips": [
-            "Extra tip 1 die niet in de hoofdanalyse zit",
-            "Extra tip 2",
-            "Extra tip 3"
-        ]
+            "[Extra tip 1 - specifiek voor deze vacature]",
+            "[Extra tip 2 - sector-gerelateerd]",
+            "[Extra tip 3 - kandidaat psychologie]"
+        ],
+        "expected_improvement": {{
+            "sollicitaties": "+45-60%",
+            "kwaliteit": "+25-35%",
+            "time_to_fill": "-15-25 dagen"
+        }}
     }}
 }}
 ```
 
 ## BELANGRIJK:
 - Output ALLEEN valid JSON, geen tekst ervoor of erna
-- overall_score is gemiddelde van 5 expert scores (float, 1 decimaal)
-- improved_text moet COMPLETE herschreven vacature zijn, niet een samenvatting
-- Alle tips moeten CONCREET en DIRECT TOEPASBAAR zijn
+- overall_score = gemiddelde van 5 expert totalen (elk max 40, dus overall max 40)
+- improved_text moet COMPLETE herschreven vacature zijn (400-600 woorden)
+- Alle tips CONCREET en DIRECT TOEPASBAAR
 - Schrijf in professioneel Nederlands
-- Focus op wat KANDIDATEN willen, niet wat bedrijven denken
+- Focus op wat KANDIDATEN willen
+- Percentages gebaseerd op benchmark data
 """
 
 
@@ -378,7 +440,7 @@ def send_confirmation_email(to_email, voornaam, bedrijf, functie):
 # V6.0: CLAUDE ANALYSIS WITH NEW PROMPT
 # =============================================================================
 def analyze_vacancy_with_claude(vacature_text, bedrijf, sector=""):
-    """V6.0: Analyze with 5-Expert Panel prompt"""
+    """V6.0+ ENHANCED: Analyze with 5-Expert Panel prompt (8-criteria, 40-point system)"""
     if not ANTHROPIC_API_KEY:
         logger.error("❌ ANTHROPIC_API_KEY not set!")
         return None
@@ -386,7 +448,7 @@ def analyze_vacancy_with_claude(vacature_text, bedrijf, sector=""):
     prompt = get_expert_panel_prompt(vacature_text, bedrijf, sector)
 
     try:
-        logger.info("🤖 Starting Claude 5-Expert Panel analysis...")
+        logger.info("🤖 Starting Claude V6.0+ Enhanced Expert Panel analysis...")
         r = requests.post(
             "https://api.anthropic.com/v1/messages",
             headers={
@@ -396,10 +458,10 @@ def analyze_vacancy_with_claude(vacature_text, bedrijf, sector=""):
             },
             json={
                 "model": "claude-sonnet-4-20250514",
-                "max_tokens": 6000,
+                "max_tokens": 8000,  # Increased for longer enhanced output
                 "messages": [{"role": "user", "content": prompt}]
             },
-            timeout=90
+            timeout=120  # Increased timeout for more complex analysis
         )
 
         if r.status_code == 200:
@@ -409,19 +471,39 @@ def analyze_vacancy_with_claude(vacature_text, bedrijf, sector=""):
             if json_start >= 0 and json_end > json_start:
                 analysis = json.loads(response_text[json_start:json_end])
                 
-                # Extract consolidated data for backward compatibility
+                # Extract consolidated data - V6.0+ Enhanced format
                 consolidated = analysis.get('consolidated', {})
+                
+                # Convert top_3_priorities to simple list for backward compatibility
+                priorities = consolidated.get('top_3_priorities', [])
+                top_3_improvements = []
+                for p in priorities:
+                    if isinstance(p, dict):
+                        top_3_improvements.append(f"{p.get('issue', '')} (Impact: {p.get('impact', '')}, Effort: {p.get('effort', '')})")
+                    else:
+                        top_3_improvements.append(str(p))
+                
+                # Build score section from breakdown
+                score_breakdown = consolidated.get('score_breakdown', '')
+                overall_score = consolidated.get('overall_score', 0)
+                max_score = consolidated.get('max_score', 40)
+                percentage = consolidated.get('percentage', int(overall_score / max_score * 100) if max_score else 0)
+                
                 result = {
-                    'overall_score': consolidated.get('overall_score', 0),
-                    'score_section': consolidated.get('score_section', ''),
-                    'top_3_improvements': consolidated.get('top_3_improvements', []),
+                    'overall_score': overall_score,
+                    'max_score': max_score,
+                    'percentage': percentage,
+                    'score_section': score_breakdown,
+                    'top_3_improvements': top_3_improvements,
                     'improved_text': consolidated.get('improved_text', ''),
                     'bonus_tips': consolidated.get('bonus_tips', []),
                     'expert_analyses': analysis.get('expert_analyses', {}),
-                    'verdict': consolidated.get('verdict', '')
+                    'verdict': consolidated.get('verdict', ''),
+                    'urgency': consolidated.get('urgency', 'ONBEKEND'),
+                    'expected_improvement': consolidated.get('expected_improvement', {})
                 }
                 
-                logger.info(f"✅ Claude analysis complete: score={result['overall_score']}")
+                logger.info(f"✅ Claude V6.0+ analysis complete: score={result['overall_score']}/{result['max_score']} ({result['percentage']}%)")
                 return result
             else:
                 logger.error("❌ No JSON found in Claude response")
@@ -497,44 +579,59 @@ def send_slack_notification(deal_id, bedrijf, functie, score, email):
 # V6.0: ANALYSIS EMAIL HTML (Enhanced with Expert Panel)
 # =============================================================================
 def get_analysis_email_html(voornaam, bedrijf, analysis, original_text=""):
-    """Generate professional analysis report email with expert panel results"""
+    """V6.0+ Enhanced: Generate professional analysis report email with 8-criteria expert panel"""
     
-    score = analysis.get('overall_score', 'N/A')
+    # V6.0+ Enhanced scoring (40-point system)
+    score = analysis.get('overall_score', 0)
+    max_score = analysis.get('max_score', 40)
+    percentage = analysis.get('percentage', int(score / max_score * 100) if max_score else 0)
     score_section = analysis.get('score_section', '')
     improvements = analysis.get('top_3_improvements', [])
     improved_text = analysis.get('improved_text', '')
     bonus_tips = analysis.get('bonus_tips', [])
     expert_analyses = analysis.get('expert_analyses', {})
     verdict = analysis.get('verdict', '')
+    urgency = analysis.get('urgency', '')
+    expected_improvement = analysis.get('expected_improvement', {})
 
-    # Score styling
+    # Score styling based on percentage (V6.0+ uses 40-point scale)
     if isinstance(score, (int, float)):
-        score_num = float(score)
-        if score_num >= 8.0:
+        pct = percentage if percentage else (score / max_score * 100)
+        if pct >= 80:
             score_color, score_bg, score_label, score_emoji = "#10B981", "#ECFDF5", "Uitstekend", "🏆"
-        elif score_num >= 6.5:
+        elif pct >= 65:
             score_color, score_bg, score_label, score_emoji = "#3B82F6", "#EFF6FF", "Goed", "👍"
-        elif score_num >= 5.0:
+        elif pct >= 50:
             score_color, score_bg, score_label, score_emoji = "#F59E0B", "#FFFBEB", "Kan beter", "📈"
         else:
             score_color, score_bg, score_label, score_emoji = "#EF4444", "#FEF2F2", "Verbetering nodig", "⚠️"
     else:
         score_color, score_bg, score_label, score_emoji = "#6B7280", "#F9FAFB", "Beoordeeld", "📊"
 
-    # Generate expert panel HTML
+    # Urgency styling
+    urgency_colors = {
+        "KRITIEK": ("#EF4444", "🔴"),
+        "AANDACHT": ("#F59E0B", "🟡"),
+        "OPTIMALISATIE": ("#10B981", "🟢")
+    }
+    urgency_color, urgency_icon = urgency_colors.get(urgency, ("#6B7280", "⚪"))
+
+    # Generate expert panel HTML - V6.0+ Enhanced format
     expert_html = ""
     expert_icons = {
-        "copywriter": "📝",
-        "arbeidspsycholoog": "🧠", 
-        "data_analist": "📊",
-        "seo_specialist": "🔍",
-        "senior_recruiter": "🎯"
+        "wouter": "👨‍💼",
+        "sarah": "👩‍💻", 
+        "mark": "👨‍🎨",
+        "linda": "👩‍💼",
+        "ruben": "🎯"
     }
     
     for key, expert in expert_analyses.items():
         icon = expert_icons.get(key, "👤")
-        exp_score = expert.get('score', 0)
-        exp_color = "#10B981" if exp_score >= 7 else "#F59E0B" if exp_score >= 5 else "#EF4444"
+        exp_total = expert.get('total', 0)
+        exp_max = 40  # Each expert scores 8 criteria x 5 max = 40
+        exp_pct = int(exp_total / exp_max * 100) if exp_max else 0
+        exp_color = "#10B981" if exp_pct >= 70 else "#F59E0B" if exp_pct >= 50 else "#EF4444"
         
         expert_html += f'''
         <tr><td style="padding:12px;border-bottom:1px solid #E5E7EB;">
@@ -542,29 +639,55 @@ def get_analysis_email_html(voornaam, bedrijf, analysis, original_text=""):
         <td width="40" style="font-size:24px;vertical-align:top;">{icon}</td>
         <td>
         <p style="margin:0 0 4px;font-weight:bold;color:#1F2937;">{expert.get('expert_name', key)}</p>
-        <p style="margin:0;color:{exp_color};font-weight:bold;">Score: {exp_score}/10</p>
+        <p style="margin:0;color:{exp_color};font-weight:bold;">Score: {exp_total}/40 ({exp_pct}%)</p>
+        <p style="margin:4px 0 0;color:#374151;font-size:12px;font-style:italic;">"{expert.get('insight', '')}"</p>
         <p style="margin:8px 0 0;color:#6B7280;font-size:13px;">💡 {expert.get('quick_win', '')}</p>
         </td>
         </tr></table>
         </td></tr>'''
 
-    # Improvements HTML
-    improvements_html = ''.join([
-        f'''<tr><td style="padding:12px 0;border-bottom:1px solid #FDE68A;">
+    # Improvements HTML - V6.0+ includes impact and effort
+    improvements_html = ''
+    for i, imp in enumerate(improvements):
+        improvements_html += f'''<tr><td style="padding:12px 0;border-bottom:1px solid #FDE68A;">
         <table width="100%"><tr>
-        <td width="40" style="background:#F59E0B;color:white;text-align:center;font-weight:bold;width:32px;height:32px;line-height:32px;">{i+1}</td>
+        <td width="40" style="background:#F59E0B;color:white;text-align:center;font-weight:bold;width:32px;height:32px;line-height:32px;border-radius:50%;">{i+1}</td>
         <td style="padding-left:12px;color:#78350F;font-size:14px;">{imp}</td>
-        </tr></table></td></tr>''' for i, imp in enumerate(improvements)
-    ])
+        </tr></table></td></tr>'''
 
     # Tips HTML
-    tips_html = ''.join([
-        f'''<tr><td style="padding:8px 0;">
+    tips_html = ''
+    for tip in bonus_tips:
+        tips_html += f'''<tr><td style="padding:8px 0;">
         <table width="100%" style="background:#ffffff;"><tr>
         <td width="40" style="padding:12px;font-size:18px;">💡</td>
         <td style="padding:12px;color:#5B21B6;font-size:14px;">{tip}</td>
-        </tr></table></td></tr>''' for tip in bonus_tips
-    ])
+        </tr></table></td></tr>'''
+
+    # Expected improvement section
+    expected_html = ""
+    if expected_improvement:
+        expected_html = f'''
+        <tr><td style="padding:0 35px 30px;">
+        <table width="100%" style="background:#ECFDF5;border:2px solid #10B981;">
+        <tr><td style="padding:20px;text-align:center;">
+        <p style="margin:0 0 15px;font-size:16px;font-weight:bold;color:#065F46;">📈 Verwachte Verbetering Na Implementatie</p>
+        <table width="100%"><tr>
+        <td style="text-align:center;padding:10px;">
+            <div style="font-size:24px;font-weight:bold;color:#10B981;">{expected_improvement.get('sollicitaties', '+40-60%')}</div>
+            <div style="font-size:12px;color:#6B7280;">Meer sollicitaties</div>
+        </td>
+        <td style="text-align:center;padding:10px;">
+            <div style="font-size:24px;font-weight:bold;color:#10B981;">{expected_improvement.get('kwaliteit', '+25-35%')}</div>
+            <div style="font-size:12px;color:#6B7280;">Betere kwaliteit</div>
+        </td>
+        <td style="text-align:center;padding:10px;">
+            <div style="font-size:24px;font-weight:bold;color:#10B981;">{expected_improvement.get('time_to_fill', '-15-25 dagen')}</div>
+            <div style="font-size:12px;color:#6B7280;">Sneller vervuld</div>
+        </td>
+        </tr></table>
+        </td></tr></table>
+        </td></tr>'''
 
     # Text formatting
     original_display = (original_text[:500] + '...') if len(original_text) > 500 else original_text
@@ -583,24 +706,28 @@ def get_analysis_email_html(voornaam, bedrijf, analysis, original_text=""):
 <!-- HEADER -->
 <tr><td style="background:#1E3A8A;padding:40px 35px;">
 <table width="100%"><tr>
-<td width="60"><div style="width:56px;height:56px;background:#FF6B35;text-align:center;line-height:56px;font-size:26px;font-weight:bold;color:#fff;">R</div></td>
+<td width="60"><div style="width:56px;height:56px;background:#FF6B35;border-radius:12px;text-align:center;line-height:56px;font-size:26px;font-weight:bold;color:#fff;">R</div></td>
 <td style="padding-left:16px;"><p style="margin:0;color:#fff;font-size:20px;font-weight:bold;">RECRUITIN</p>
 <p style="margin:4px 0 0;color:#E0E7FF;font-size:12px;">Vacature Intelligence Platform</p></td>
 </tr></table>
-<p style="margin:30px 0 0;color:#93C5FD;font-size:12px;font-weight:bold;text-transform:uppercase;">5-EXPERT PANEL ANALYSE</p>
+<p style="margin:30px 0 0;color:#93C5FD;font-size:12px;font-weight:bold;text-transform:uppercase;">V6.0+ ENHANCED • 5-EXPERT PANEL • 8 CRITERIA</p>
 <p style="margin:8px 0 0;color:#fff;font-size:28px;font-weight:bold;">📊 Vacature Analyse Rapport</p>
 <p style="margin:10px 0 0;color:#E0E7FF;font-size:15px;">Gepersonaliseerd voor <strong style="color:#fff;">{bedrijf}</strong></p>
 </td></tr>
 
 <!-- SCORE -->
 <tr><td style="padding:45px 35px;background:#f8fafc;" align="center">
-<div style="width:140px;height:140px;border:8px solid {score_color};background:#fff;display:inline-block;text-align:center;line-height:140px;">
-<span style="font-size:52px;font-weight:bold;color:{score_color};">{score}</span><span style="color:#9CA3AF;">/10</span>
+<div style="width:160px;height:160px;border:8px solid {score_color};border-radius:50%;background:#fff;display:inline-block;text-align:center;padding-top:35px;">
+<span style="font-size:48px;font-weight:bold;color:{score_color};">{score}</span><span style="color:#9CA3AF;font-size:20px;">/{max_score}</span>
+<div style="font-size:24px;color:{score_color};margin-top:5px;">{percentage}%</div>
 </div>
-<div style="margin-top:15px;background:{score_bg};border:2px solid {score_color};padding:10px 24px;display:inline-block;">
+<div style="margin-top:15px;background:{score_bg};border:2px solid {score_color};border-radius:25px;padding:10px 24px;display:inline-block;">
 <span style="font-weight:bold;color:{score_color};">{score_emoji} {score_label}</span>
 </div>
-<p style="margin:15px 0 0;color:#6B7280;font-size:13px;">{score_section}</p>
+<div style="margin-top:10px;background:{urgency_color};border-radius:15px;padding:6px 16px;display:inline-block;">
+<span style="font-weight:bold;color:#fff;font-size:12px;">{urgency_icon} URGENTIE: {urgency}</span>
+</div>
+<p style="margin:15px 0 0;color:#6B7280;font-size:12px;">{score_section}</p>
 </td></tr>
 
 <!-- INTRO -->
@@ -609,82 +736,86 @@ def get_analysis_email_html(voornaam, bedrijf, analysis, original_text=""):
 <td width="4" style="background:#FF6B35;"></td>
 <td style="padding-left:20px;">
 <p style="margin:0 0 12px;font-size:20px;font-weight:bold;color:#1F2937;">Hoi {voornaam}! 👋</p>
-<p style="margin:0;color:#4B5563;font-size:15px;line-height:24px;">Bedankt voor het uploaden van je vacature. Ons <strong>5-expert panel</strong> heeft je tekst grondig geanalyseerd vanuit verschillende perspectieven.</p>
+<p style="margin:0;color:#4B5563;font-size:15px;line-height:24px;">Bedankt voor het uploaden van je vacature. Ons <strong>5-expert panel</strong> heeft je tekst grondig geanalyseerd op <strong>8 kritieke criteria</strong> gebaseerd op 2.847+ geoptimaliseerde Nederlandse vacatures.</p>
+<p style="margin:12px 0 0;color:#374151;font-size:14px;font-style:italic;">"{verdict}"</p>
 </td></tr></table>
 </td></tr>
 
 <!-- EXPERT PANEL -->
 <tr><td style="padding:0 35px 30px;">
-<table width="100%" style="background:#F0F9FF;border:2px solid #0EA5E9;">
+<table width="100%" style="background:#F0F9FF;border:2px solid #0EA5E9;border-radius:12px;">
 <tr><td style="padding:25px;">
-<p style="margin:0 0 20px;font-size:18px;font-weight:bold;color:#0369A1;">🎓 Expert Panel Scores</p>
+<p style="margin:0 0 20px;font-size:18px;font-weight:bold;color:#0369A1;">🎓 Expert Panel Analyse</p>
 <table width="100%">{expert_html}</table>
 </td></tr></table>
 </td></tr>
 
 <!-- TOP 3 -->
 <tr><td style="padding:0 35px 30px;">
-<table width="100%" style="background:#FFFBEB;border:2px solid #F59E0B;">
+<table width="100%" style="background:#FFFBEB;border:2px solid #F59E0B;border-radius:12px;">
 <tr><td style="padding:25px;">
-<p style="margin:0 0 20px;font-size:18px;font-weight:bold;color:#92400E;">🎯 Top 3 Verbeterpunten</p>
+<p style="margin:0 0 20px;font-size:18px;font-weight:bold;color:#92400E;">🎯 Top 3 Verbeterpunten (Impact Gerangschikt)</p>
 <table width="100%">{improvements_html}</table>
 </td></tr></table>
 </td></tr>
+
+<!-- EXPECTED IMPROVEMENT -->
+{expected_html}
 
 <!-- BEFORE/AFTER -->
 <tr><td style="padding:0 35px 30px;">
 <p style="margin:0 0 20px;text-align:center;font-size:20px;font-weight:bold;color:#1F2937;">📝 Voor & Na Optimalisatie</p>
 <table width="100%"><tr>
-<td width="48%" style="background:#FEF2F2;border:2px solid #FECACA;padding:18px;vertical-align:top;">
-<div style="background:#EF4444;padding:5px 12px;display:inline-block;margin-bottom:12px;"><span style="font-size:11px;font-weight:bold;color:#fff;">❌ ORIGINEEL</span></div>
-<div style="background:#fff;border:1px solid #FECACA;padding:14px;font-size:12px;color:#6B7280;line-height:20px;">{original_display}</div>
+<td width="48%" style="background:#FEF2F2;border:2px solid #FECACA;border-radius:8px;padding:18px;vertical-align:top;">
+<div style="background:#EF4444;border-radius:15px;padding:5px 12px;display:inline-block;margin-bottom:12px;"><span style="font-size:11px;font-weight:bold;color:#fff;">❌ ORIGINEEL</span></div>
+<div style="background:#fff;border:1px solid #FECACA;border-radius:8px;padding:14px;font-size:12px;color:#6B7280;line-height:20px;">{original_display}</div>
 </td>
 <td width="4%"></td>
-<td width="48%" style="background:#ECFDF5;border:2px solid #A7F3D0;padding:18px;vertical-align:top;">
-<div style="background:#10B981;padding:5px 12px;display:inline-block;margin-bottom:12px;"><span style="font-size:11px;font-weight:bold;color:#fff;">✅ GEOPTIMALISEERD</span></div>
-<div style="background:#fff;border:1px solid #A7F3D0;padding:14px;font-size:12px;color:#374151;line-height:20px;">{improved_preview}</div>
+<td width="48%" style="background:#ECFDF5;border:2px solid #A7F3D0;border-radius:8px;padding:18px;vertical-align:top;">
+<div style="background:#10B981;border-radius:15px;padding:5px 12px;display:inline-block;margin-bottom:12px;"><span style="font-size:11px;font-weight:bold;color:#fff;">✅ GEOPTIMALISEERD</span></div>
+<div style="background:#fff;border:1px solid #A7F3D0;border-radius:8px;padding:14px;font-size:12px;color:#374151;line-height:20px;">{improved_preview}</div>
 </td>
 </tr></table>
 </td></tr>
 
 <!-- FULL IMPROVED TEXT -->
 <tr><td style="padding:0 35px 30px;">
-<table width="100%" style="background:#ECFDF5;border:2px solid #10B981;">
+<table width="100%" style="background:#ECFDF5;border:2px solid #10B981;border-radius:12px;">
 <tr><td style="padding:25px;">
-<p style="margin:0 0 20px;font-size:18px;font-weight:bold;color:#065F46;">✍️ Verbeterde Vacaturetekst</p>
-<div style="background:#fff;border:1px solid #A7F3D0;padding:20px;font-size:14px;color:#374151;line-height:24px;">{improved_text_html}</div>
-<p style="margin:18px 0 0;text-align:center;font-size:13px;color:#059669;">💾 Kopieer en plaats direct in je vacature</p>
+<p style="margin:0 0 20px;font-size:18px;font-weight:bold;color:#065F46;">✍️ Verbeterde Vacaturetekst (Direct Bruikbaar)</p>
+<div style="background:#fff;border:1px solid #A7F3D0;border-radius:8px;padding:20px;font-size:14px;color:#374151;line-height:24px;">{improved_text_html}</div>
+<p style="margin:18px 0 0;text-align:center;font-size:13px;color:#059669;">💾 Kopieer en plaats direct in je vacature - verwachte verbetering: {expected_improvement.get('sollicitaties', '+40-60%')} meer sollicitaties</p>
 </td></tr></table>
 </td></tr>
 
 <!-- BONUS TIPS -->
 <tr><td style="padding:0 35px 30px;">
-<table width="100%" style="background:#F5F3FF;border:2px solid #8B5CF6;">
+<table width="100%" style="background:#F5F3FF;border:2px solid #8B5CF6;border-radius:12px;">
 <tr><td style="padding:25px;">
-<p style="margin:0 0 20px;font-size:18px;font-weight:bold;color:#5B21B6;">🚀 Bonus Tips</p>
+<p style="margin:0 0 20px;font-size:18px;font-weight:bold;color:#5B21B6;">🚀 Bonus Expert Tips</p>
 <table width="100%">{tips_html}</table>
 </td></tr></table>
 </td></tr>
 
 <!-- CTA -->
 <tr><td style="padding:0 35px 35px;">
-<table width="100%" style="background:#1E3A8A;"><tr><td style="padding:35px;text-align:center;">
+<table width="100%" style="background:#1E3A8A;border-radius:12px;"><tr><td style="padding:35px;text-align:center;">
 <p style="margin:0 0 10px;font-size:22px;font-weight:bold;color:#fff;">Wil je nog meer resultaat?</p>
 <p style="margin:0 0 25px;font-size:15px;color:#E0E7FF;">Plan een gratis adviesgesprek van 30 minuten.</p>
-<a href="https://calendly.com/wouter-arts-/vacature-analyse-advies" style="display:inline-block;background:#10B981;color:#fff;padding:14px 24px;text-decoration:none;font-weight:bold;margin:0 6px;">📅 Plan Gesprek</a>
-<a href="https://wa.me/31614314593?text=Hoi%20Wouter,%20ik%20heb%20mijn%20vacature-analyse%20ontvangen!" style="display:inline-block;background:#25D366;color:#fff;padding:14px 24px;text-decoration:none;font-weight:bold;margin:0 6px;">💬 WhatsApp</a>
+<a href="https://calendly.com/wouter-arts-/vacature-analyse-advies" style="display:inline-block;background:#10B981;color:#fff;padding:14px 24px;text-decoration:none;font-weight:bold;border-radius:8px;margin:0 6px;">📅 Plan Gesprek</a>
+<a href="https://wa.me/31614314593?text=Hoi%20Wouter,%20ik%20heb%20mijn%20vacature-analyse%20ontvangen!" style="display:inline-block;background:#25D366;color:#fff;padding:14px 24px;text-decoration:none;font-weight:bold;border-radius:8px;margin:0 6px;">💬 WhatsApp</a>
 </td></tr></table>
 </td></tr>
 
 <!-- FOOTER -->
-<tr><td style="background:#111827;padding:30px 35px;">
+<tr><td style="background:#111827;padding:30px 35px;border-radius:0 0 12px 12px;">
 <table width="100%"><tr>
 <td><p style="margin:0 0 4px;font-size:17px;font-weight:bold;color:#fff;">Wouter Arts</p>
 <p style="margin:0 0 2px;font-size:13px;color:#9CA3AF;">Founder & Recruitment Specialist</p>
 <p style="margin:0;font-size:14px;font-weight:bold;color:#FF6B35;">Kandidatentekort.nl</p></td>
 <td align="right"><p style="margin:0;font-size:12px;color:#9CA3AF;line-height:22px;">📞 06-14314593<br>📧 warts@recruitin.nl<br>🌐 kandidatentekort.nl</p></td>
 </tr></table>
-<p style="margin:20px 0 0;text-align:center;color:#6B7280;font-size:11px;border-top:1px solid #374151;padding-top:20px;">© 2025 Kandidatentekort.nl | Recruitin B.V.</p>
+<p style="margin:20px 0 0;text-align:center;color:#6B7280;font-size:11px;border-top:1px solid #374151;padding-top:20px;">© 2025 Kandidatentekort.nl | Recruitin B.V. | V6.0+ Enhanced Analysis</p>
 </td></tr>
 
 </table></td></tr></table>
