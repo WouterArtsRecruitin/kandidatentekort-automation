@@ -1,528 +1,350 @@
 <!DOCTYPE html>
-<html lang="nl" dir="ltr">
-<head>
-    <!-- Critical Meta Tags -->
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f172a" />
+
     <!-- SEO Meta Tags -->
-    <title>Gratis Vacature Analyse - Kom uit het Kandidatentekort | Recruitin</title>
-    <meta name="description" content="Ontdek waarom jouw vacatures niet de juiste kandidaten aantrekken. Krijg binnen 24 uur een gratis professionele analyse van je vacaturetekst en praktische verbeterpunten.">
-    <meta name="keywords" content="vacature analyse, recruitin, kandidatentekort, recruitment, hr, personeelswerving">
-    <meta name="author" content="Recruitin - Wouter Arts">
+    <title>Gratis Vacature Check door Technisch Recruitment Experts | KandidatenTekort.nl</title>
+    <meta name="description" content="Upload je technische vacature en ontvang binnen 24u expert advies. Gebaseerd op 10+ jaar ervaring en 500+ succesvolle plaatsingen in Oil & Gas, Productie, Automation en meer.">
     <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://kandidatentekort.nl/">
-    
+    <meta name="author" content="Recruitin">
+    <link rel="canonical" href="https://kandidatentekort.nl/" />
+
     <!-- Open Graph / Facebook -->
+    <meta property="fb:app_id" content="757606233848402">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://kandidatentekort.nl/">
-    <meta property="og:title" content="Gratis Vacature Analyse - Kom uit het Kandidatentekort">
-    <meta property="og:description" content="Ontdek waarom jouw vacatures niet de juiste kandidaten aantrekken. Krijg binnen 24 uur een gratis analyse.">
-    <meta property="og:image" content="https://kandidatentekort.nl/og-image.jpg">
+    <meta property="og:site_name" content="KandidatenTekort.nl">
+    <meta property="og:title" content="Gratis Vacature Check - Technisch Recruitment Experts">
+    <meta property="og:description" content="Upload je technische vacature en ontvang binnen 24u expert advies. Gebaseerd op 10+ jaar ervaring en 500+ succesvolle plaatsingen in Oil & Gas, Productie, Automation en meer.">
+    <meta property="og:url" content="https://kandidatentekort.nl">
+    <meta property="og:locale" content="nl_NL">
+    <!-- OG image - using Google Photos CDN for reliability -->
+    <meta property="og:image" content="https://lh3.googleusercontent.com/d/1cBokXlFmTFYgxlaALdnGvbcXbhtvuLjT=w1200">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:site_name" content="Recruitin">
-    <meta property="og:locale" content="nl_NL">
+    <meta property="og:image:alt" content="KandidatenTekort.nl - Verhoog je Sollicitaties met 40-60%">
+    <meta property="og:image:type" content="image/jpeg">
 
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://kandidatentekort.nl/">
-    <meta property="twitter:title" content="Gratis Vacature Analyse - Kom uit het Kandidatentekort">
-    <meta property="twitter:description" content="Ontdek waarom jouw vacatures niet de juiste kandidaten aantrekken. Krijg binnen 24 uur een gratis analyse.">
-    <meta property="twitter:image" content="https://kandidatentekort.nl/og-image.jpg">
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Gratis Vacature Analyse - 40-60% Meer Sollicitaties">
+    <meta name="twitter:description" content="Upload je vacature en ontvang direct een AI-powered analyse.">
+    <meta name="twitter:image" content="https://lh3.googleusercontent.com/d/1cBokXlFmTFYgxlaALdnGvbcXbhtvuLjT=w1200">
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="manifest" href="/site.webmanifest">
-    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#FF6B35">
-    <meta name="theme-color" content="#FF6B35">
-    <meta name="msapplication-TileColor" content="#FF6B35">
+    <!-- Preconnect to external domains for performance -->
+    <link rel="preconnect" href="https://consent.cookiebot.com">
+    <link rel="preconnect" href="https://www.googletagmanager.com">
+    <link rel="preconnect" href="https://connect.facebook.net">
+    <link rel="preconnect" href="https://embed.typeform.com">
 
-    <!-- Preconnect for Performance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://connect.facebook.net" crossorigin>
-    <link rel="preconnect" href="https://www.facebook.com" crossorigin>
-    <link rel="preconnect" href="https://api.typeform.com" crossorigin>
-    <link rel="preconnect" href="https://calendly.com" crossorigin>
-
-    <!-- DNS Prefetch -->
-    <link rel="dns-prefetch" href="//fonts.googleapis.com">
-    <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
-    <link rel="dns-prefetch" href="//embed.typeform.com">
-
-    <!-- Critical CSS (Inlined for Performance) -->
-    <style>
-        /* Critical Above-the-fold CSS */
-        :root {
-            --primary-color: #FF6B35;
-            --secondary-color: #1E3A8A;
-            --accent-color: #10B981;
-            --dark-color: #1F2937;
-            --light-color: #F9FAFB;
-            --text-color: #374151;
-            --border-color: #E5E7EB;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            line-height: 1.6;
-            color: var(--text-color);
-            background-color: #ffffff;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 1rem;
-        }
-
-        .hero {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-            color: white;
-            padding: 4rem 0;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="white" opacity="0.1"/></svg>') repeat;
-            background-size: 50px 50px;
-            animation: float 20s infinite linear;
-        }
-
-        @keyframes float {
-            0% { transform: translateY(0) translateX(0); }
-            100% { transform: translateY(-50px) translateX(-50px); }
-        }
-
-        .hero-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 3rem;
-            align-items: center;
-            position: relative;
-            z-index: 1;
-        }
-
-        .hero h1 {
-            font-size: clamp(2.5rem, 5vw, 4rem);
-            font-weight: 800;
-            line-height: 1.1;
-            margin-bottom: 1.5rem;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .hero p {
-            font-size: 1.25rem;
-            margin-bottom: 2rem;
-            opacity: 0.95;
-            line-height: 1.6;
-        }
-
-        .cta-button {
-            display: inline-block;
-            background: white;
-            color: var(--primary-color);
-            padding: 1rem 2rem;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 1.1rem;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            border: none;
-            cursor: pointer;
-            text-align: center;
-            min-width: 200px;
-        }
-
-        .cta-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-            background: #f8f9fa;
-        }
-
-        .typeform-container {
-            background: white;
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-            min-height: 400px;
-        }
-
-        @media (max-width: 768px) {
-            .hero-content {
-                grid-template-columns: 1fr;
-                text-align: center;
-            }
-            .hero {
-                padding: 2rem 0;
-            }
-        }
-
-        /* Loading states */
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid var(--primary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
-
-    <!-- Meta Pixel Code -->
-    <script>
-        !function(f,b,e,v,n,t,s)
-        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-        n.queue=[];t=b.createElement(e);t.async=!0;
-        t.src=v;s=b.getElementsByTagName(e)[0];
-        s.parentNode.insertBefore(t,s)}(window, document,'script',
-        'https://connect.facebook.net/en_US/fbevents.js');
-        fbq('init', '238226887541404');
-        fbq('track', 'PageView');
-    </script>
-    <noscript>
-        <img height="1" width="1" style="display:none"
-             src="https://www.facebook.com/tr?id=238226887541404&ev=PageView&noscript=1"/>
-    </noscript>
-    <!-- End Meta Pixel Code -->
-
-    <!-- Structured Data for SEO -->
+    <!-- Schema.org Structured Data -->
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "ProfessionalService",
-        "name": "Recruitin - Vacature Analyse Service",
-        "description": "Gratis professionele analyse van vacatureteksten om het kandidatentekort op te lossen",
-        "url": "https://kandidatentekort.nl",
-        "telephone": "+31614314593",
-        "email": "wouter@recruitin.nl",
-        "address": {
-            "@type": "PostalAddress",
-            "addressCountry": "NL"
-        },
-        "sameAs": [
-            "https://www.linkedin.com/company/recruitin",
-            "https://wa.me/31614314593"
-        ],
-        "offers": {
-            "@type": "Offer",
-            "description": "Gratis vacature analyse",
-            "price": "0",
-            "priceCurrency": "EUR"
-        }
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "KandidatenTekort.nl",
+      "url": "https://kandidatentekort.nl",
+      "logo": "https://kandidatentekort.nl/logo.png",
+      "description": "Technisch recruitment specialists voor Oil & Gas, Productie, Automation en Engineering",
+      "address": {
+        "@type": "PostalAddress",
+        "addressCountry": "NL",
+        "addressRegion": "Gelderland"
+      },
+      "parentOrganization": {
+        "@type": "Organization",
+        "name": "Recruitin B.V."
+      }
     }
     </script>
-</head>
-<body>
-    <!-- Skip Navigation for Accessibility -->
-    <a href="#main-content" class="skip-link" style="position:absolute;top:-40px;left:6px;background:var(--primary-color);color:white;padding:8px;text-decoration:none;z-index:1000;" 
-       onfocus="this.style.top='6px'" onblur="this.style.top='-40px'">
-        Skip to main content
-    </a>
 
-    <!-- Main Hero Section -->
-    <main id="main-content">
-        <section class="hero" role="banner">
-            <div class="container">
-                <div class="hero-content">
-                    <div class="hero-text">
-                        <h1>Kom uit het Kandidaten&shy;tekort</h1>
-                        <p>Ontdek binnen 24 uur waarom jouw vacatures niet de juiste kandidaten aantrekken. Krijg een gratis professionele analyse van je vacaturetekst.</p>
-                        <a href="#typeform" 
-                           class="cta-button" 
-                           onclick="fbq('track', 'Lead'); scrollToForm();"
-                           role="button"
-                           aria-label="Start gratis vacature analyse">
-                            📊 Start Gratis Analyse
-                        </a>
-                        <p style="font-size: 0.9rem; margin-top: 1rem; opacity: 0.8;">
-                            ✅ 100% gratis &nbsp;&nbsp; ✅ Binnen 24 uur &nbsp;&nbsp; ✅ Praktische tips
-                        </p>
-                    </div>
-                    <div class="typeform-container" id="typeform">
-                        <!-- Typeform will be loaded here -->
-                        <div id="typeform-loading" style="text-align: center; padding: 2rem;">
-                            <div class="loading"></div>
-                            <p style="margin-top: 1rem; color: var(--text-color);">Formulier laden...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Benefits Section -->
-        <section style="padding: 4rem 0; background: var(--light-color);">
-            <div class="container">
-                <div style="text-align: center; margin-bottom: 3rem;">
-                    <h2 style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--dark-color);">
-                        Waarom blijven je vacatures open staan?
-                    </h2>
-                    <p style="font-size: 1.2rem; color: var(--text-color); max-width: 600px; margin: 0 auto;">
-                        De meeste bedrijven maken dezelfde fouten in hun vacatureteksten. Wij analyseren precies wat er mis gaat.
-                    </p>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; max-width: 1000px; margin: 0 auto;">
-                    <div style="background: white; padding: 2rem; border-radius: 15px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">🎯</div>
-                        <h3 style="color: var(--dark-color); margin-bottom: 1rem;">Verkeerde Doelgroep</h3>
-                        <p>Je vacature spreekt niet de juiste kandidaten aan door onduidelijke functieomschrijving.</p>
-                    </div>
-                    
-                    <div style="background: white; padding: 2rem; border-radius: 15px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">💰</div>
-                        <h3 style="color: var(--dark-color); margin-bottom: 1rem;">Onduidelijk Aanbod</h3>
-                        <p>Kandidaten snappen niet wat je te bieden hebt qua salaris, voorwaarden en ontwikkeling.</p>
-                    </div>
-                    
-                    <div style="background: white; padding: 2rem; border-radius: 15px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">📢</div>
-                        <h3 style="color: var(--dark-color); margin-bottom: 1rem;">Zwakke Positionering</h3>
-                        <p>Je bedrijf komt niet overtuigend over als een aantrekkelijke werkgever in de markt.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- CTA Section -->
-        <section style="padding: 4rem 0; background: var(--secondary-color); color: white; text-align: center;">
-            <div class="container">
-                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">Krijg jouw persoonlijke analyse</h2>
-                <p style="font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.9;">
-                    Upload je vacature en ontvang binnen 24 uur een professioneel rapport met concrete verbeterpunten.
-                </p>
-                <a href="#typeform" 
-                   class="cta-button"
-                   onclick="fbq('track', 'Lead'); scrollToForm();"
-                   style="background: var(--primary-color); color: white;">
-                    📊 Start Nu - 100% Gratis
-                </a>
-            </div>
-        </section>
-    </main>
-
-    <!-- Footer -->
-    <footer style="background: var(--dark-color); color: white; padding: 2rem 0; text-align: center;">
-        <div class="container">
-            <p>&copy; 2024 Recruitin. Alle rechten voorbehouden.</p>
-            <div style="margin-top: 1rem;">
-                <a href="https://wa.me/31614314593" 
-                   style="color: var(--accent-color); text-decoration: none; margin: 0 1rem;"
-                   onclick="fbq('track', 'Contact');">
-                    📱 WhatsApp
-                </a>
-                <a href="https://calendly.com/wouter-arts-/vacature-analyse-advies" 
-                   style="color: var(--accent-color); text-decoration: none; margin: 0 1rem;"
-                   onclick="fbq('track', 'Schedule');">
-                    📅 Plan Gesprek
-                </a>
-            </div>
-            <p style="font-size: 0.9rem; margin-top: 1rem; opacity: 0.7;">
-                Privacy-vriendelijk | Geen spam | Professioneel advies
-            </p>
-        </div>
-    </footer>
-
-    <!-- Deferred JavaScript -->
-    <script>
-        // Performance optimized script loading
-        function scrollToForm() {
-            document.getElementById('typeform').scrollIntoView({ 
-                behavior: 'smooth',
-                block: 'center'
-            });
-        }
-
-        // Lazy load Typeform
-        function loadTypeform() {
-            const container = document.getElementById('typeform');
-            const loading = document.getElementById('typeform-loading');
-            
-            // Create Typeform embed
-            const script = document.createElement('script');
-            script.src = 'https://embed.typeform.com/next/embed.js';
-            script.onload = function() {
-                loading.style.display = 'none';
-                
-                // Initialize Typeform
-                if (window.tf && window.tf.createWidget) {
-                    window.tf.createWidget('kalFRTCA', {
-                        container: container,
-                        height: 500,
-                        hideHeaders: true,
-                        hideFooter: true,
-                        opacity: 100,
-                        transitiveSearchParams: ['utm_source', 'utm_medium', 'utm_campaign'],
-                        onSubmit: function() {
-                            fbq('track', 'CompleteRegistration');
-                            
-                            // Show thank you message
-                            container.innerHTML = `
-                                <div style="text-align: center; padding: 3rem;">
-                                    <div style="font-size: 4rem; margin-bottom: 1rem;">🎉</div>
-                                    <h3 style="color: var(--accent-color); margin-bottom: 1rem;">Bedankt!</h3>
-                                    <p style="margin-bottom: 2rem;">Je ontvangt binnen 24 uur je persoonlijke vacature-analyse op het opgegeven e-mailadres.</p>
-                                    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                                        <a href="https://calendly.com/wouter-arts-/vacature-analyse-advies" 
-                                           style="background: var(--accent-color); color: white; padding: 0.8rem 1.5rem; border-radius: 25px; text-decoration: none; font-weight: 600;"
-                                           onclick="fbq('track', 'Schedule');">
-                                            📅 Plan direct een gesprek
-                                        </a>
-                                        <a href="https://wa.me/31614314593?text=Hoi%20Wouter,%20ik%20heb%20zojuist%20mijn%20vacature%20geüpload%20voor%20analyse" 
-                                           style="background: #25D366; color: white; padding: 0.8rem 1.5rem; border-radius: 25px; text-decoration: none; font-weight: 600;"
-                                           onclick="fbq('track', 'Contact');">
-                                            💬 WhatsApp direct
-                                        </a>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                    });
-                }
-            };
-            document.head.appendChild(script);
-        }
-
-        // Load Typeform when page is ready and user is likely to interact
-        document.addEventListener('DOMContentLoaded', function() {
-            // Load immediately on mobile, after 2 seconds on desktop
-            const isMobile = window.innerWidth < 768;
-            const delay = isMobile ? 0 : 2000;
-            
-            setTimeout(loadTypeform, delay);
-            
-            // Also load on any user interaction
-            ['click', 'scroll', 'touchstart', 'keydown'].forEach(event => {
-                document.addEventListener(event, loadTypeform, { once: true, passive: true });
-            });
-        });
-
-        // Enhanced Analytics
-        function trackAnalytics(event, data = {}) {
-            // Facebook Pixel
-            if (typeof fbq !== 'undefined') {
-                fbq('track', event, data);
-            }
-            
-            // Google Analytics (if available)
-            if (typeof gtag !== 'undefined') {
-                gtag('event', event, data);
-            }
-        }
-
-        // Track scroll depth
-        let scrollTracked = {};
-        window.addEventListener('scroll', function() {
-            const scrollPercent = Math.round((window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100);
-            
-            [25, 50, 75, 100].forEach(threshold => {
-                if (scrollPercent >= threshold && !scrollTracked[threshold]) {
-                    scrollTracked[threshold] = true;
-                    trackAnalytics('ViewContent', { 
-                        content_type: 'scroll_depth',
-                        value: threshold 
-                    });
-                }
-            });
-        });
-
-        // Track time on page
-        let startTime = Date.now();
-        window.addEventListener('beforeunload', function() {
-            const timeSpent = Math.round((Date.now() - startTime) / 1000);
-            if (timeSpent > 10) { // Only track if more than 10 seconds
-                trackAnalytics('ViewContent', { 
-                    content_type: 'time_spent',
-                    value: timeSpent 
-                });
-            }
-        });
-
-        // Service Worker for offline support and performance
-        if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js').catch(function() {
-                    // Silently fail if service worker isn't available
-                });
-            });
-        }
-
-        // Critical Web Vitals tracking
-        function trackWebVitals() {
-            if ('web-vital' in window) {
-                window['web-vital'].getCLS(trackAnalytics.bind(null, 'WebVital'));
-                window['web-vital'].getFID(trackAnalytics.bind(null, 'WebVital'));
-                window['web-vital'].getFCP(trackAnalytics.bind(null, 'WebVital'));
-                window['web-vital'].getLCP(trackAnalytics.bind(null, 'WebVital'));
-                window['web-vital'].getTTFB(trackAnalytics.bind(null, 'WebVital'));
-            }
-        }
-
-        // Load Web Vitals library
-        const webVitalsScript = document.createElement('script');
-        webVitalsScript.src = 'https://unpkg.com/web-vitals@3/dist/web-vitals.iife.js';
-        webVitalsScript.onload = trackWebVitals;
-        webVitalsScript.defer = true;
-        document.head.appendChild(webVitalsScript);
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Kandidatentekort Vacature Optimizer",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "29",
+        "priceCurrency": "EUR"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "reviewCount": "120",
+        "bestRating": "5"
+      }
+    }
     </script>
 
-    <!-- Accessibility improvements -->
-    <style>
-        /* Focus visible for better accessibility */
-        *:focus-visible {
-            outline: 2px solid var(--primary-color);
-            outline-offset: 2px;
-        }
+    <!-- Google Consent Mode v2 (BEFORE any tracking scripts) -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
 
-        /* Respect user's motion preferences */
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
-        }
+      // Default consent state (denied until user consents)
+      gtag('consent', 'default', {
+        'ad_storage': 'denied',
+        'ad_user_data': 'denied',
+        'ad_personalization': 'denied',
+        'analytics_storage': 'denied',
+        'functionality_storage': 'denied',
+        'personalization_storage': 'denied',
+        'security_storage': 'granted',
+        'wait_for_update': 500
+      });
 
-        /* High contrast mode support */
-        @media (prefers-contrast: high) {
-            :root {
-                --primary-color: #000080;
-                --text-color: #000000;
-                --border-color: #000000;
-            }
+      // Enable URL passthrough for better attribution
+      gtag('set', 'url_passthrough', true);
+      gtag('set', 'ads_data_redaction', true);
+    </script>
+
+    <!-- Cookiebot - Cookie Consent -->
+    <script id="Cookiebot"
+            src="https://consent.cookiebot.com/uc.js"
+            data-cbid="255025f6-3932-479b-a9d7-6a4fac614cb8"
+            data-blockingmode="auto"
+            data-culture="nl"
+            type="text/javascript"></script>
+
+    <!-- Cookiebot callback for consent updates -->
+    <script>
+      window.addEventListener('CookiebotOnAccept', function() {
+        if (Cookiebot.consent.statistics) {
+          gtag('consent', 'update', {
+            'analytics_storage': 'granted'
+          });
         }
-    </style>
-</body>
+        if (Cookiebot.consent.marketing) {
+          gtag('consent', 'update', {
+            'ad_storage': 'granted',
+            'ad_user_data': 'granted',
+            'ad_personalization': 'granted'
+          });
+        }
+      });
+    </script>
+
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-67PJ02SXVN"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-67PJ02SXVN', {
+        'anonymize_ip': true,
+        'cookie_flags': 'SameSite=None;Secure'
+      });
+    </script>
+
+    <!-- Facebook Pixel - 238226887541404 -->
+    <script>
+      !function(f,b,e,v,n,t,s)
+      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+      n.queue=[];t=b.createElement(e);t.async=!0;
+      t.src=v;s=b.getElementsByTagName(e)[0];
+      s.parentNode.insertBefore(t,s)}(window, document,'script',
+      'https://connect.facebook.net/en_US/fbevents.js');
+
+      fbq('init', '238226887541404');
+      fbq('track', 'PageView');
+    </script>
+
+    <!-- Typeform Embed -->
+    <script src="https://embed.typeform.com/next/embed.js"></script>
+    <!-- ========================================
+         KANDIDATENTEKORT TRACKING V2.0
+         Deployed: 2025-12-14T16:45:06Z
+         ======================================== -->
+
+    <!-- Google Consent Mode v2 -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('consent', 'default', {
+        'ad_storage': 'denied',
+        'ad_user_data': 'denied',
+        'ad_personalization': 'denied',
+        'analytics_storage': 'denied',
+        'functionality_storage': 'denied',
+        'personalization_storage': 'denied',
+        'security_storage': 'granted',
+        'wait_for_update': 500
+      });
+      gtag('set', 'url_passthrough', true);
+      gtag('set', 'ads_data_redaction', true);
+    </script>
+
+    <!-- Cookiebot -->
+    <script id="Cookiebot" src="https://consent.cookiebot.com/uc.js" data-cbid="255025f6-3932-479b-a9d7-6a4fac614cb8" data-blockingmode="auto" data-culture="nl"></script>
+    <script>
+      window.addEventListener('CookiebotOnAccept', function() {
+        if (Cookiebot.consent.statistics) gtag('consent', 'update', {'analytics_storage': 'granted'});
+        if (Cookiebot.consent.marketing) gtag('consent', 'update', {'ad_storage': 'granted','ad_user_data': 'granted','ad_personalization': 'granted'});
+      });
+    </script>
+
+    <!-- GA4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-67PJ02SXVN"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-67PJ02SXVN', {'anonymize_ip': true,'cookie_flags': 'SameSite=None;Secure'});
+    </script>
+
+    <!-- Meta Pixel -->
+    <script>
+      !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+      fbq('init', '238226887541404');
+      fbq('track', 'PageView');
+    </script>
+    <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=238226887541404&ev=PageView&noscript=1"/></noscript>
+
+    <!-- UTM + Custom Events -->
+    <script>
+    (function() {
+      const p = new URLSearchParams(window.location.search);
+      const u = {};
+      ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'].forEach(k => {
+        const v = p.get(k);
+        if (v) { u[k] = v; sessionStorage.setItem(k, v); }
+      });
+      if (Object.keys(u).length) {
+        console.log('📊 UTM:', u);
+        gtag('event', 'utm_capture', {source:u.utm_source||'direct',medium:u.utm_medium||'none',campaign:u.utm_campaign||'none'});
+      }
+      function trackCTA() {
+        document.querySelectorAll('[data-track="start-analyse"],.cta-button,button[type="submit"]').forEach(b => {
+          b.addEventListener('click', () => {
+            gtag('event', 'start_analyse', {event_category:'engagement',utm_source:sessionStorage.getItem('utm_source')||'direct'});
+            fbq('track', 'InitiateCheckout');
+            console.log('🎯 CTA clicked');
+          });
+        });
+      }
+      function trackForm() {
+        const check = setInterval(() => {
+          const tf = document.querySelector('[data-tf-widget],iframe[src*="typeform"]');
+          if (tf) {
+            clearInterval(check);
+            gtag('event', 'form_view', {event_category:'engagement',form_type:'typeform'});
+            fbq('track', 'ViewContent', {content_name:'Vacature Analyse'});
+            console.log('📋 Form loaded');
+          }
+        }, 500);
+        setTimeout(() => clearInterval(check), 10000);
+      }
+      window.trackLead = function(email, company) {
+        gtag('event', 'generate_lead', {event_category:'conversion',value:7990,currency:'EUR',email,company,utm_source:sessionStorage.getItem('utm_source')||'direct'});
+        fbq('track', 'Lead', {value:7990,currency:'EUR'});
+        console.log('✅ Lead:', email);
+      };
+      let ms = 0;
+      [25,50,75,90].forEach(m => {
+        window.addEventListener('scroll', () => {
+          const pct = Math.round((window.scrollY/(document.documentElement.scrollHeight-window.innerHeight))*100);
+          if (pct >= m && ms < m) {
+            ms = m;
+            gtag('event', 'scroll_depth', {percent:m});
+            console.log('📜 Scroll:', m+'%');
+          }
+        });
+      });
+      [30000,60000,120000].forEach(t => {
+        setTimeout(() => {
+          gtag('event', 'time_on_page', {seconds:t/1000});
+          console.log('⏱️ Time:', (t/1000)+'s');
+        }, t);
+      });
+      function init() {
+        trackCTA();
+        trackForm();
+        console.log('✅ Tracking active');
+      }
+      document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init) : init();
+    })();
+    </script>
+    <!-- UTM Capture Script -->
+    <script>
+    (function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const trackingData = {
+        utm_source: urlParams.get("utm_source"),
+        utm_medium: urlParams.get("utm_medium"),
+        utm_campaign: urlParams.get("utm_campaign"),
+        utm_content: urlParams.get("utm_content"),
+        utm_term: urlParams.get("utm_term"),
+        fbclid: urlParams.get("fbclid"),
+        gclid: urlParams.get("gclid"),
+        timestamp: new Date().toISOString(),
+        referrer: document.referrer,
+        landing_page: window.location.pathname
+      };
+      const hasTrackingData = Object.values(trackingData).some(v => v && v !== "");
+      if (hasTrackingData) {
+        try {
+          localStorage.setItem("kt_tracking_data", JSON.stringify(trackingData));
+          localStorage.setItem("kt_tracking_timestamp", Date.now());
+        } catch (e) {}
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({ event: "utm_captured", ...trackingData });
+      }
+      window.getTrackingData = function() {
+        try {
+          const stored = localStorage.getItem("kt_tracking_data");
+          return stored ? JSON.parse(stored) : null;
+        } catch (e) { return null; }
+      };
+    })();
+    </script>
+
+  </head>
+
+  <body>
+    <!-- Facebook Pixel noscript fallback -->
+    <noscript>
+      <img height="1" width="1" style="display:none"
+           src="https://www.facebook.com/tr?id=238226887541404&ev=PageView&noscript=1"/>
+    </noscript>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <!-- Lead Event Tracking -->
+    <script>
+    (function() {
+      let formStarted = false;
+      let formCompleted = false;
+      window.addEventListener("message", function(event) {
+        if (!event.origin.includes("typeform.com")) return;
+        try {
+          const data = event.data;
+          if (data.type === "form-ready" && !formStarted) {
+            formStarted = true;
+            if (typeof fbq !== "undefined") {
+              fbq("track", "ViewContent", { content_name: "Vacature Analyse Form" });
+            }
+          }
+          if ((data.type === "form-submit" || data.type === "form-close") && !formCompleted) {
+            formCompleted = true;
+            const trackingData = window.getTrackingData ? window.getTrackingData() : {};
+            if (typeof fbq !== "undefined") {
+              fbq("track", "Lead", { content_name: "Vacature Analyse", value: 29, currency: "EUR" });
+            }
+            if (typeof gtag !== "undefined") {
+              gtag("event", "conversion", { send_to: "G-67PJ02SXVN/lead", value: 29, currency: "EUR" });
+            }
+          }
+        } catch (e) {}
+      });
+    })();
+    </script>
+
+  </body>
 </html>
