@@ -1,0 +1,11 @@
+.env
+*.log
+__pycache__/
+venv/
+.DS_Store
+*.pyc
+.idea/
+.vscode/
+node_modules/
+*.secret
+*credentials*
