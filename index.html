@@ -218,6 +218,41 @@
     </noscript>
     <!-- End Meta Pixel Code -->
 
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-W6G1NY28BD"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        
+        // Configure GA4 with enhanced measurement and custom parameters
+        gtag('config', 'G-W6G1NY28BD', {
+            send_page_view: true,
+            cookie_flags: 'SameSite=None;Secure',
+            custom_map: {
+                'dimension1': 'user_type',
+                'dimension2': 'page_variant',
+                'dimension3': 'utm_content'
+            },
+            user_properties: {
+                site_version: 'kandidatentekort_v2',
+                language: 'nl'
+            }
+        });
+        
+        // Set up enhanced conversions
+        gtag('set', 'user_data', {
+            'sha256_email_address': '', // Will be set when form is submitted
+            'sha256_phone_number': ''   // Will be set when form is submitted
+        });
+        
+        // Configure conversion events
+        gtag('event', 'conversion_event_setup', {
+            'conversion_events': ['generate_lead', 'form_submit', 'sign_up']
+        });
+    </script>
+    <!-- End Google Analytics 4 -->
+
     <!-- Structured Data for SEO -->
     <script type="application/ld+json">
     {
@@ -262,7 +297,7 @@
                         <p>Ontdek binnen 24 uur waarom jouw vacatures niet de juiste kandidaten aantrekken. Krijg een gratis professionele analyse van je vacaturetekst.</p>
                         <a href="#typeform" 
                            class="cta-button" 
-                           onclick="fbq('track', 'Lead'); scrollToForm();"
+                           onclick="fbq('track', 'Lead'); trackServerEvent('Lead'); if(typeof gtag !== 'undefined') { gtag('event', 'click', { event_category: 'CTA', event_label: 'hero_start_analysis' }); } scrollToForm();"
                            role="button"
                            aria-label="Start gratis vacature analyse">
                             📊 Start Gratis Analyse
@@ -325,7 +360,7 @@
                 </p>
                 <a href="#typeform" 
                    class="cta-button"
-                   onclick="fbq('track', 'Lead'); scrollToForm();"
+                   onclick="fbq('track', 'Lead'); trackServerEvent('Lead'); if(typeof gtag !== 'undefined') { gtag('event', 'click', { event_category: 'CTA', event_label: 'benefits_start_analysis' }); } scrollToForm();"
                    style="background: var(--primary-color); color: white;">
                     📊 Start Nu - 100% Gratis
                 </a>
@@ -340,12 +375,12 @@
             <div style="margin-top: 1rem;">
                 <a href="https://wa.me/31614314593" 
                    style="color: var(--accent-color); text-decoration: none; margin: 0 1rem;"
-                   onclick="fbq('track', 'Contact');">
+                   onclick="fbq('track', 'Contact'); trackServerEvent('Contact');">
                     📱 WhatsApp
                 </a>
                 <a href="https://calendly.com/wouter-arts-/vacature-analyse-advies" 
                    style="color: var(--accent-color); text-decoration: none; margin: 0 1rem;"
-                   onclick="fbq('track', 'Schedule');">
+                   onclick="fbq('track', 'Schedule'); trackServerEvent('Schedule');">
                     📅 Plan Gesprek
                 </a>
             </div>
@@ -357,6 +392,19 @@
 
     <!-- Deferred JavaScript -->
     <script>
+        // Server-side event tracking function
+        function trackServerEvent(eventName, customData = {}) {
+            fetch('/.netlify/functions/track-conversion', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    event_name: eventName,
+                    event_source_url: window.location.href,
+                    custom_data: customData
+                })
+            }).catch(err => console.log('Conversions API error:', err));
+        }
+
         // Performance optimized script loading
         function scrollToForm() {
             document.getElementById('typeform').scrollIntoView({ 
@@ -386,7 +434,50 @@
                         opacity: 100,
                         transitiveSearchParams: ['utm_source', 'utm_medium', 'utm_campaign'],
                         onSubmit: function() {
+                            // Facebook Pixel conversion tracking
                             fbq('track', 'CompleteRegistration');
+                            
+                            // Server-side Facebook Conversions API tracking
+                            fetch('/.netlify/functions/track-conversion', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    event_name: 'CompleteRegistration',
+                                    email: document.querySelector('input[name="email"]')?.value || '',
+                                    phone: document.querySelector('input[name="phone"]')?.value || '',
+                                    event_source_url: window.location.href,
+                                    custom_data: {
+                                        value: 0,
+                                        currency: 'EUR'
+                                    }
+                                })
+                            }).catch(err => console.log('Conversions API error:', err));
+                            
+                            // Google Analytics 4 conversion tracking
+                            if (typeof gtag !== 'undefined') {
+                                // Primary conversion event
+                                gtag('event', 'generate_lead', {
+                                    event_category: 'engagement',
+                                    event_label: 'vacancy_analysis_form',
+                                    value: 1,
+                                    currency: 'EUR',
+                                    lead_source: 'kandidatentekort_landing',
+                                    form_type: 'typeform_embed',
+                                    user_type: 'prospect'
+                                });
+                                
+                                // Additional tracking for form completion
+                                gtag('event', 'form_submit', {
+                                    form_name: 'vacancy_analysis',
+                                    form_destination: 'typeform',
+                                    form_submit_text: 'complete'
+                                });
+                                
+                                // Track as sign up event for remarketing
+                                gtag('event', 'sign_up', {
+                                    method: 'vacancy_analysis_form'
+                                });
+                            }
                             
                             // Show thank you message
                             container.innerHTML = `
@@ -397,12 +488,12 @@
                                     <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
                                         <a href="https://calendly.com/wouter-arts-/vacature-analyse-advies" 
                                            style="background: var(--accent-color); color: white; padding: 0.8rem 1.5rem; border-radius: 25px; text-decoration: none; font-weight: 600;"
-                                           onclick="fbq('track', 'Schedule');">
+                                           onclick="fbq('track', 'Schedule'); trackServerEvent('Schedule');">
                                             📅 Plan direct een gesprek
                                         </a>
                                         <a href="https://wa.me/31614314593?text=Hoi%20Wouter,%20ik%20heb%20zojuist%20mijn%20vacature%20geüpload%20voor%20analyse" 
                                            style="background: #25D366; color: white; padding: 0.8rem 1.5rem; border-radius: 25px; text-decoration: none; font-weight: 600;"
-                                           onclick="fbq('track', 'Contact');">
+                                           onclick="fbq('track', 'Contact'); trackServerEvent('Contact');">
                                             💬 WhatsApp direct
                                         </a>
                                     </div>
@@ -417,6 +508,25 @@
 
         // Load Typeform when page is ready and user is likely to interact
         document.addEventListener('DOMContentLoaded', function() {
+            // Track UTM parameters and traffic source
+            const urlParams = new URLSearchParams(window.location.search);
+            const utmParams = {};
+            ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'].forEach(param => {
+                if (urlParams.has(param)) {
+                    utmParams[param] = urlParams.get(param);
+                }
+            });
+            
+            // Send traffic source data to GA4
+            if (typeof gtag !== 'undefined' && Object.keys(utmParams).length > 0) {
+                gtag('event', 'page_view', {
+                    page_referrer: document.referrer,
+                    traffic_source: utmParams.utm_source || 'direct',
+                    traffic_medium: utmParams.utm_medium || 'none',
+                    traffic_campaign: utmParams.utm_campaign || 'none',
+                    custom_parameters: utmParams
+                });
+            }
             // Load immediately on mobile, after 2 seconds on desktop
             const isMobile = window.innerWidth < 768;
             const delay = isMobile ? 0 : 2000;
@@ -442,7 +552,7 @@
             }
         }
 
-        // Track scroll depth
+        // Track scroll depth with enhanced GA4 parameters
         let scrollTracked = {};
         window.addEventListener('scroll', function() {
             const scrollPercent = Math.round((window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100);
@@ -450,10 +560,23 @@
             [25, 50, 75, 100].forEach(threshold => {
                 if (scrollPercent >= threshold && !scrollTracked[threshold]) {
                     scrollTracked[threshold] = true;
-                    trackAnalytics('ViewContent', { 
-                        content_type: 'scroll_depth',
-                        value: threshold 
-                    });
+                    
+                    // Enhanced tracking for both FB and GA4
+                    if (typeof fbq !== 'undefined') {
+                        fbq('track', 'ViewContent', { 
+                            content_type: 'scroll_depth',
+                            value: threshold 
+                        });
+                    }
+                    
+                    if (typeof gtag !== 'undefined') {
+                        gtag('event', 'scroll', {
+                            percent_scrolled: threshold,
+                            page_title: document.title,
+                            page_location: window.location.href,
+                            engagement_time_msec: Date.now() - startTime
+                        });
+                    }
                 }
             });
         });
@@ -470,6 +593,28 @@
             }
         });
 
+        // Global error tracking for GA4
+        window.addEventListener('error', function(e) {
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'exception', {
+                    description: e.message + ' at ' + e.filename + ':' + e.lineno + ':' + e.colno,
+                    fatal: false
+                });
+            }
+        });
+        
+        // Track form field interactions
+        document.addEventListener('focus', function(e) {
+            if (e.target.matches('input, textarea, select')) {
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'form_start', {
+                        form_name: 'vacancy_analysis',
+                        form_field: e.target.name || e.target.id || 'unknown'
+                    });
+                }
+            }
+        }, true);
+        
         // Service Worker for offline support and performance
         if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
             window.addEventListener('load', function() {
