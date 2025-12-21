@@ -479,26 +479,8 @@
                                 });
                             }
                             
-                            // Show thank you message
-                            container.innerHTML = `
-                                <div style="text-align: center; padding: 3rem;">
-                                    <div style="font-size: 4rem; margin-bottom: 1rem;">🎉</div>
-                                    <h3 style="color: var(--accent-color); margin-bottom: 1rem;">Bedankt!</h3>
-                                    <p style="margin-bottom: 2rem;">Je ontvangt binnen 24 uur je persoonlijke vacature-analyse op het opgegeven e-mailadres.</p>
-                                    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                                        <a href="https://calendly.com/wouter-arts-/vacature-analyse-advies" 
-                                           style="background: var(--accent-color); color: white; padding: 0.8rem 1.5rem; border-radius: 25px; text-decoration: none; font-weight: 600;"
-                                           onclick="fbq('track', 'Schedule'); trackServerEvent('Schedule');">
-                                            📅 Plan direct een gesprek
-                                        </a>
-                                        <a href="https://wa.me/31614314593?text=Hoi%20Wouter,%20ik%20heb%20zojuist%20mijn%20vacature%20geüpload%20voor%20analyse" 
-                                           style="background: #25D366; color: white; padding: 0.8rem 1.5rem; border-radius: 25px; text-decoration: none; font-weight: 600;"
-                                           onclick="fbq('track', 'Contact'); trackServerEvent('Contact');">
-                                            💬 WhatsApp direct
-                                        </a>
-                                    </div>
-                                </div>
-                            `;
+                            // Redirect to confirmation page
+                            window.location.href = '/vacature-optimalisatie-bevestiging.html';
                         }
                     });
                 }
