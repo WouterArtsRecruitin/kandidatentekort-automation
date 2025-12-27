@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V5.1
+KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V5.0
 Deploy: Render.com | Updated: 2025-11-28
 - V2: Pipedrive organization, person, deal creation
 - V3: Claude AI vacancy analysis + report email
@@ -10,7 +10,7 @@ Deploy: Render.com | Updated: 2025-11-28
 - V4.0: ULTIMATE email template - Score visualization, Category breakdown,
         Before/After comparison, Full improved text, Numbered checklist, Bonus tips
 - V4.1: OUTLOOK COMPATIBLE - Full table-based layout, MSO conditionals, no flex/gradients
-- V5.1: TRUST-FIRST EMAIL NURTURE - 8 automated follow-up emails over 30 days
+- V5.0: TRUST-FIRST EMAIL NURTURE - 8 automated follow-up emails over 30 days
 """
 
 import os
@@ -265,59 +265,36 @@ def analyze_vacancy_with_claude(vacature_text, bedrijf, sector=""):
         logger.error("❌ ANTHROPIC_API_KEY not set!")
         return None
 
-    prompt = f"""Je bent een Nederlandse recruitment expert met 15+ jaar ervaring in het schrijven van vacatureteksten die kandidaten daadwerkelijk triggeren om te reageren. Je kent alle ins en outs van de Nederlandse arbeidsmarkt, met speciale expertise in technische, logistieke en commerciële functies.
-
-Je schrijfstijl kenmerkt zich door: natuurlijke Nederlandse taal (geen jargon), concrete voorbeelden, focus op wat kandidaten écht belangrijk vinden, en een menselijke, persoonlijke toon die bedrijven onderscheidt van hun concurrenten.
+    prompt = f"""Je bent een expert recruitment copywriter gespecialiseerd in de Nederlandse technische arbeidsmarkt. Analyseer deze vacaturetekst en verbeter ze voor maximale kandidaat-conversie.
 
 ## VACATURETEKST OM TE ANALYSEREN:
+
 {vacature_text}
 
-## BEDRIJF: {bedrijf}
-## SECTOR: {sector if sector else 'Algemeen'}
+## CONTEXT:
+- Bedrijf: {bedrijf}
+- Sector: {sector if sector else 'Niet opgegeven'}
 
 ## JOUW OPDRACHT:
-1. Analyseer deze vacaturetekst kritisch
-2. Geef een eerlijke score op basis van 4 criteria
-3. Lever concrete, direct implementeerbare verbeteringen
-4. Herschrijf de vacature zodat deze kandidaten triggert om te reageren
-5. Focus op wat kandidaten ECHT belangrijk vinden (niet wat bedrijven denken)
 
-## SCORING CRITERIA:
-- **Aantrekkelijkheid** (1-10): Triggert dit kandidaten om door te lezen? Is het onderscheidend?
-- **Duidelijkheid** (1-10): Weet een kandidaat precies wat de functie inhoudt en wat geboden wordt?
-- **USP's** (1-10): Wat maakt dit bedrijf/functie uniek? Waarom hier en niet ergens anders?
-- **Call-to-action** (1-10): Weet de kandidaat wat te doen? Is de drempel laag?
+Analyseer deze vacaturetekst en lever het volgende in EXACT dit JSON format:
 
-## OUTPUT STRUCTUUR - EXACT DIT JSON FORMAT:
 {{
-    "overall_score": 6.8,
-    "score_section": "Aantrekkelijkheid: 6/10 (te generiek, mist persoonlijke touch) • Duidelijkheid: 8/10 (functie helder, salaris ontbreekt) • USP's: 5/10 (waarom dit bedrijf?) • Call-to-action: 8/10 (duidelijke sollicitatie-instructies)",
+    "overall_score": 7.2,
+    "score_section": "Aantrekkelijkheid: 7/10 - Duidelijkheid: 6/10 - USP's: 5/10 - Call-to-action: 8/10",
     "top_3_improvements": [
-        "Start met een pakkende openingszin die kandidaten direct aanspreekt - niet weer zo'n saaie 'Wij zoeken' opening",
-        "Voeg concrete salarisrange toe (kandidaten willen dit weten!) en benoem unieke secundaire voorwaarden",
-        "Vertel wat dit bedrijf écht anders maakt - cultuur, sfeer, doorgroeimogelijkheden met concrete voorbeelden"
+        "Eerste concrete verbetering",
+        "Tweede concrete verbetering",
+        "Derde concrete verbetering"
     ],
-    "improved_text": "[HERSCHRIJF DE COMPLETE VACATURE - 400-600 woorden]\\n\\nSTRUCTUUR:\\n1. Pakkende opening (geen 'wij zoeken')\\n2. Wat ga je ECHT doen (concreet, een dag uit het leven)\\n3. Wat bieden we jou (salaris, cultuur, ontwikkeling)\\n4. Wie zoeken we (realistisch, geen superhelden)\\n5. Overtuigende call-to-action\\n\\nSCHRIJFSTIJL:\\n- Schrijf vanuit 'je/jou' perspectief\\n- Gebruik concrete voorbeelden\\n- Wees eerlijk en menselijk\\n- Geen bullshit-bingo of holle termen",
+    "improved_text": "De volledige verbeterde vacaturetekst hier (400-600 woorden, pakkende opening, duidelijke functie-inhoud, concrete arbeidsvoorwaarden, sterke employer branding, overtuigende call-to-action)",
     "bonus_tips": [
-        "Post deze vacature op vrijdagmiddag of maandagochtend voor maximaal bereik - vermijd dinsdag t/m donderdag",
-        "Test de vacature met iemand uit je doelgroep - vraag wat hen wel/niet aanspreekt",
-        "Voeg een video/foto toe van het team - kandidaten willen zien met wie ze gaan werken"
+        "Eerste bonus tip voor de recruiter",
+        "Tweede bonus tip"
     ]
 }}
 
-## BELANGRIJKE SCHRIJFREGELS:
-1. Geen clichés zoals "dynamisch bedrijf", "informele sfeer", "hands-on mentaliteit"
-2. Wees specifiek: niet "marktconform salaris" maar "€3.500-€4.500"
-3. Gebruik voorbeelden: niet "afwisselend werk" maar "de ene dag X, de andere dag Y"
-4. Schrijf menselijk: alsof je het aan een vriend vertelt
-5. Focus op wat kandidaten krijgen, niet wat jij zoekt
-
-## LET OP:
-- Output ALLEEN valid JSON
-- Geen extra tekst voor of na de JSON
-- overall_score is een float (bijv. 7.5)
-- Alle strings in quotes
-- Arrays correct geformatteerd"""
+BELANGRIJK: Antwoord ALLEEN met valid JSON, geen tekst ervoor of erna."""
 
     try:
         logger.info("🤖 Starting Claude analysis...")
@@ -767,30 +744,10 @@ def parse_typeform_data(webhook_data):
     }
 
     try:
-        # ============================================
-        # V5.1: Check for Zapier FLAT format first
-        # ============================================
-        if 'email' in webhook_data and 'form_response' not in webhook_data:
-            logger.info("📋 Detected Zapier FLAT format")
-            result['email'] = webhook_data.get('email', '')
-            result['voornaam'] = webhook_data.get('voornaam', 'daar')
-            result['contact'] = f"{webhook_data.get('voornaam', '')} {webhook_data.get('achternaam', '')}".strip() or 'Onbekend'
-            result['telefoon'] = webhook_data.get('telefoon', webhook_data.get('phone', ''))
-            result['bedrijf'] = webhook_data.get('bedrijf', webhook_data.get('company', 'Onbekend'))
-            result['vacature'] = webhook_data.get('vacature', webhook_data.get('vacancy', ''))
-            result['functie'] = (webhook_data.get('functie', '') or webhook_data.get('vacature', 'vacature'))[:50]
-            result['sector'] = webhook_data.get('sector', '')
-            result['file_url'] = webhook_data.get('file_url', webhook_data.get('file', ''))
-            logger.info(f"📋 Zapier parsed: email={result['email']}, contact={result['contact']}, bedrijf={result['bedrijf']}")
-            return result
-
-        # ============================================
-        # Original Typeform NESTED format
-        # ============================================
         form_response = webhook_data.get('form_response', {})
         answers = form_response.get('answers', [])
 
-        logger.info(f"📋 Parsing Typeform format: {len(answers)} answers")
+        logger.info(f"📋 Parsing {len(answers)} answers")
 
         # Collect all values by type
         texts = []  # All short_text values
@@ -973,11 +930,109 @@ def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="
     return None
 
 
+def find_person_by_email(email):
+    """Search for existing person by email in Pipedrive"""
+    if not PIPEDRIVE_API_TOKEN or not email:
+        return None
+    try:
+        r = requests.get(
+            f"{PIPEDRIVE_BASE}/persons/search",
+            params={
+                "api_token": PIPEDRIVE_API_TOKEN,
+                "term": email,
+                "fields": "email",
+                "limit": 5
+            },
+            timeout=30
+        )
+        if r.status_code == 200:
+            items = r.json().get('data', {}).get('items', [])
+            for item in items:
+                person = item.get('item', {})
+                person_emails = person.get('emails', [])
+                # Check if email matches exactly
+                for pe in person_emails:
+                    if isinstance(pe, str) and pe.lower() == email.lower():
+                        person_id = person.get('id')
+                        logger.info(f"🔍 Found existing person by email: {email} (ID: {person_id})")
+                        return person_id
+        logger.info(f"🔍 No existing person found for email: {email}")
+    except Exception as e:
+        logger.error(f"Pipedrive person search error: {e}")
+    return None
+
+
+def get_person_deals_in_pipeline(person_id, pipeline_id):
+    """Get existing deals for a person in a specific pipeline"""
+    if not PIPEDRIVE_API_TOKEN or not person_id:
+        return []
+    try:
+        r = requests.get(
+            f"{PIPEDRIVE_BASE}/persons/{person_id}/deals",
+            params={
+                "api_token": PIPEDRIVE_API_TOKEN,
+                "status": "open",
+                "limit": 50
+            },
+            timeout=30
+        )
+        if r.status_code == 200:
+            deals = r.json().get('data', []) or []
+            pipeline_deals = [d for d in deals if d.get('pipeline_id') == pipeline_id]
+            logger.info(f"🔍 Found {len(pipeline_deals)} deals for person {person_id} in pipeline {pipeline_id}")
+            return pipeline_deals
+    except Exception as e:
+        logger.error(f"Pipedrive person deals error: {e}")
+    return []
+
+
+def update_deal_with_vacancy(deal_id, title, vacancy_text, file_url, analysis):
+    """Update an existing deal with vacancy info and add note"""
+    if not PIPEDRIVE_API_TOKEN or not deal_id:
+        return False
+    try:
+        # Update deal title
+        r = requests.put(
+            f"{PIPEDRIVE_BASE}/deals/{deal_id}",
+            params={"api_token": PIPEDRIVE_API_TOKEN},
+            json={"title": title},
+            timeout=30
+        )
+        if r.status_code != 200:
+            logger.warning(f"Deal update failed: {r.status_code}")
+
+        # Add vacancy info as note
+        note_parts = []
+        note_parts.append("🔄 UPDATE VIA TYPEFORM FORMULIER")
+        if vacancy_text:
+            note_parts.append(f"📋 VACATURE:\n{vacancy_text[:2000]}")
+        if file_url:
+            note_parts.append(f"📎 BESTAND:\n{file_url}")
+        if analysis:
+            note_parts.append(f"🤖 ANALYSE:\n{analysis}")
+
+        if note_parts:
+            requests.post(
+                f"{PIPEDRIVE_BASE}/notes",
+                params={"api_token": PIPEDRIVE_API_TOKEN},
+                json={
+                    "deal_id": deal_id,
+                    "content": "\n\n".join(note_parts)
+                },
+                timeout=30
+            )
+        logger.info(f"✅ Updated existing deal {deal_id} with vacancy info")
+        return True
+    except Exception as e:
+        logger.error(f"Pipedrive deal update error: {e}")
+    return False
+
+
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({
         "status": "healthy",
-        "version": "5.1",
+        "version": "5.0",
         "features": ["typeform", "analysis", "nurture"],
         "email": bool(GMAIL_APP_PASSWORD),
         "pipedrive": bool(PIPEDRIVE_API_TOKEN),
@@ -1043,19 +1098,47 @@ TOP 3 VERBETERPUNTEN:
 VERBETERDE TEKST:
 {analysis.get('improved_text', '')[:1500]}"""
 
-        # Create Pipedrive records (organization first, then person, then deal)
-        org_id = create_pipedrive_organization(p['bedrijf'])
-        person_id = create_pipedrive_person(p['contact'], p['email'], p['telefoon'], org_id)
-        deal_id = create_pipedrive_deal(
-            f"Vacature Analyse - {p['functie']} - {p['bedrijf']}",
-            person_id,
-            org_id,
-            vacancy_text,  # Use extracted text if available
-            p['file_url'],
-            analysis_summary
-        )
+        # CHECK FOR EXISTING DEAL (from Meta Lead or previous submission)
+        deal_id = None
+        person_id = None
+        org_id = None
+        updated_existing = False
 
-        logger.info(f"✅ Done: confirmation={confirmation_sent}, analysis={analysis_sent}, org={org_id}, person={person_id}, deal={deal_id}")
+        # First, check if person already exists by email
+        existing_person_id = find_person_by_email(p['email'])
+
+        if existing_person_id:
+            logger.info(f"🔍 Found existing person {existing_person_id}, checking for deals in Pipeline {PIPELINE_ID}")
+            # Check if they have an existing deal in Pipeline 4
+            existing_deals = get_person_deals_in_pipeline(existing_person_id, PIPELINE_ID)
+
+            if existing_deals:
+                # Update the most recent existing deal
+                existing_deal = existing_deals[0]  # Most recent
+                deal_id = existing_deal.get('id')
+                person_id = existing_person_id
+                org_id = existing_deal.get('org_id')
+
+                new_title = f"Vacature Analyse - {p['functie']} - {p['bedrijf']}"
+                update_deal_with_vacancy(deal_id, new_title, vacancy_text, p['file_url'], analysis_summary)
+                updated_existing = True
+                logger.info(f"✅ Updated EXISTING deal {deal_id} with vacancy info (Meta Lead flow)")
+
+        # If no existing deal found, create new records
+        if not deal_id:
+            org_id = create_pipedrive_organization(p['bedrijf'])
+            person_id = existing_person_id or create_pipedrive_person(p['contact'], p['email'], p['telefoon'], org_id)
+            deal_id = create_pipedrive_deal(
+                f"Vacature Analyse - {p['functie']} - {p['bedrijf']}",
+                person_id,
+                org_id,
+                vacancy_text,  # Use extracted text if available
+                p['file_url'],
+                analysis_summary
+            )
+            logger.info(f"✅ Created NEW deal {deal_id} (no existing deal found)")
+
+        logger.info(f"✅ Done: confirmation={confirmation_sent}, analysis={analysis_sent}, org={org_id}, person={person_id}, deal={deal_id}, updated_existing={updated_existing}")
 
         return jsonify({
             "success": True,
@@ -1091,7 +1174,7 @@ def debug_webhook():
 
 
 # =============================================================================
-# TRUST-FIRST EMAIL NURTURE SYSTEM V5.1
+# TRUST-FIRST EMAIL NURTURE SYSTEM V5.0
 # =============================================================================
 
 def get_nurture_email_html(email_num, voornaam, functie_titel):
@@ -1543,7 +1626,7 @@ def nurture_scheduler():
 def health_check():
     return jsonify({
         "status": "healthy",
-        "version": "5.1",
+        "version": "5.0",
         "features": ["typeform", "analysis", "nurture"],
         "email": bool(GMAIL_APP_PASSWORD),
         "pipedrive": bool(PIPEDRIVE_API_TOKEN),
