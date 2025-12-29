@@ -299,7 +299,7 @@ async function zapierStep2_EnhancedPipedriveCreation(inputData) {
             value: dealValue,
             currency: 'EUR',
             stage_id: stageId,
-            pipeline_id: 3, // Vacature analyse pipeline
+            pipeline_id: 4, // Vacature analyse pipeline
             person_name: `${inputData.firstName} ${inputData.lastName}`.trim(),
             person_email: inputData.email,
             person_phone: inputData.phone,
