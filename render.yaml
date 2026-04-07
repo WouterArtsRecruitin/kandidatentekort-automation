@@ -16,6 +16,10 @@ services:
         sync: false
       - key: RESEND_FROM_EMAIL
         value: noreply@kandidatentekort.nl
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
       - key: GMAIL_USER
         sync: false
       - key: GMAIL_APP_PASSWORD
