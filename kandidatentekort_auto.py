@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V5.0
+KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V5.1
 Deploy: Render.com | Updated: 2025-11-28
 - V2: Pipedrive organization, person, deal creation
 - V3: Claude AI vacancy analysis + report email
@@ -10,7 +10,7 @@ Deploy: Render.com | Updated: 2025-11-28
 - V4.0: ULTIMATE email template - Score visualization, Category breakdown,
         Before/After comparison, Full improved text, Numbered checklist, Bonus tips
 - V4.1: OUTLOOK COMPATIBLE - Full table-based layout, MSO conditionals, no flex/gradients
-- V5.0: TRUST-FIRST EMAIL NURTURE - 8 automated follow-up emails over 30 days
+- V5.1: TRUST-FIRST EMAIL NURTURE - 8 automated follow-up emails over 30 days
 """
 
 import os
@@ -21,6 +21,9 @@ import smtplib
 import requests
 import threading
 import time
+import hmac
+import hashlib
+import base64
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -744,10 +747,30 @@ def parse_typeform_data(webhook_data):
     }
 
     try:
+        # ============================================
+        # V5.1: Check for Zapier FLAT format first
+        # ============================================
+        if 'email' in webhook_data and 'form_response' not in webhook_data:
+            logger.info("📋 Detected Zapier FLAT format")
+            result['email'] = webhook_data.get('email', '')
+            result['voornaam'] = webhook_data.get('voornaam', 'daar')
+            result['contact'] = f"{webhook_data.get('voornaam', '')} {webhook_data.get('achternaam', '')}".strip() or 'Onbekend'
+            result['telefoon'] = webhook_data.get('telefoon', webhook_data.get('phone', ''))
+            result['bedrijf'] = webhook_data.get('bedrijf', webhook_data.get('company', 'Onbekend'))
+            result['vacature'] = webhook_data.get('vacature', webhook_data.get('vacancy', ''))
+            result['functie'] = (webhook_data.get('functie', '') or webhook_data.get('vacature', 'vacature'))[:50]
+            result['sector'] = webhook_data.get('sector', '')
+            result['file_url'] = webhook_data.get('file_url', webhook_data.get('file', ''))
+            logger.info(f"📋 Zapier parsed: email={result['email']}, contact={result['contact']}, bedrijf={result['bedrijf']}")
+            return result
+
+        # ============================================
+        # Original Typeform NESTED format
+        # ============================================
         form_response = webhook_data.get('form_response', {})
         answers = form_response.get('answers', [])
 
-        logger.info(f"📋 Parsing {len(answers)} answers")
+        logger.info(f"📋 Parsing Typeform format: {len(answers)} answers")
 
         # Collect all values by type
         texts = []  # All short_text values
@@ -851,6 +874,39 @@ def create_pipedrive_organization(name):
     return None
 
 
+def get_or_create_organization(name):
+    """Get existing organization or create new one (DEDUPLICATION FIX)"""
+    if not PIPEDRIVE_API_TOKEN or not name or name == 'Onbekend':
+        return None
+
+    try:
+        # Search for existing organization
+        r = requests.get(
+            f"{PIPEDRIVE_BASE}/organizations/find",
+            params={
+                "api_token": PIPEDRIVE_API_TOKEN,
+                "term": name,
+                "limit": 1
+            },
+            timeout=30
+        )
+
+        if r.status_code == 200:
+            data = r.json().get('data', [])
+            if data and len(data) > 0:
+                org_id = data[0]['id']
+                logger.info(f"✅ Found existing organization: {name} (ID: {org_id})")
+                return org_id
+
+        # Not found, create new
+        return create_pipedrive_organization(name)
+
+    except Exception as e:
+        logger.error(f"Error searching orgs: {e}")
+        # Fallback to creation
+        return create_pipedrive_organization(name)
+
+
 def create_pipedrive_person(contact, email, telefoon, org_id=None):
     if not PIPEDRIVE_API_TOKEN:
         return None
@@ -930,109 +986,11 @@ def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="
     return None
 
 
-def find_person_by_email(email):
-    """Search for existing person by email in Pipedrive"""
-    if not PIPEDRIVE_API_TOKEN or not email:
-        return None
-    try:
-        r = requests.get(
-            f"{PIPEDRIVE_BASE}/persons/search",
-            params={
-                "api_token": PIPEDRIVE_API_TOKEN,
-                "term": email,
-                "fields": "email",
-                "limit": 5
-            },
-            timeout=30
-        )
-        if r.status_code == 200:
-            items = r.json().get('data', {}).get('items', [])
-            for item in items:
-                person = item.get('item', {})
-                person_emails = person.get('emails', [])
-                # Check if email matches exactly
-                for pe in person_emails:
-                    if isinstance(pe, str) and pe.lower() == email.lower():
-                        person_id = person.get('id')
-                        logger.info(f"🔍 Found existing person by email: {email} (ID: {person_id})")
-                        return person_id
-        logger.info(f"🔍 No existing person found for email: {email}")
-    except Exception as e:
-        logger.error(f"Pipedrive person search error: {e}")
-    return None
-
-
-def get_person_deals_in_pipeline(person_id, pipeline_id):
-    """Get existing deals for a person in a specific pipeline"""
-    if not PIPEDRIVE_API_TOKEN or not person_id:
-        return []
-    try:
-        r = requests.get(
-            f"{PIPEDRIVE_BASE}/persons/{person_id}/deals",
-            params={
-                "api_token": PIPEDRIVE_API_TOKEN,
-                "status": "open",
-                "limit": 50
-            },
-            timeout=30
-        )
-        if r.status_code == 200:
-            deals = r.json().get('data', []) or []
-            pipeline_deals = [d for d in deals if d.get('pipeline_id') == pipeline_id]
-            logger.info(f"🔍 Found {len(pipeline_deals)} deals for person {person_id} in pipeline {pipeline_id}")
-            return pipeline_deals
-    except Exception as e:
-        logger.error(f"Pipedrive person deals error: {e}")
-    return []
-
-
-def update_deal_with_vacancy(deal_id, title, vacancy_text, file_url, analysis):
-    """Update an existing deal with vacancy info and add note"""
-    if not PIPEDRIVE_API_TOKEN or not deal_id:
-        return False
-    try:
-        # Update deal title
-        r = requests.put(
-            f"{PIPEDRIVE_BASE}/deals/{deal_id}",
-            params={"api_token": PIPEDRIVE_API_TOKEN},
-            json={"title": title},
-            timeout=30
-        )
-        if r.status_code != 200:
-            logger.warning(f"Deal update failed: {r.status_code}")
-
-        # Add vacancy info as note
-        note_parts = []
-        note_parts.append("🔄 UPDATE VIA TYPEFORM FORMULIER")
-        if vacancy_text:
-            note_parts.append(f"📋 VACATURE:\n{vacancy_text[:2000]}")
-        if file_url:
-            note_parts.append(f"📎 BESTAND:\n{file_url}")
-        if analysis:
-            note_parts.append(f"🤖 ANALYSE:\n{analysis}")
-
-        if note_parts:
-            requests.post(
-                f"{PIPEDRIVE_BASE}/notes",
-                params={"api_token": PIPEDRIVE_API_TOKEN},
-                json={
-                    "deal_id": deal_id,
-                    "content": "\n\n".join(note_parts)
-                },
-                timeout=30
-            )
-        logger.info(f"✅ Updated existing deal {deal_id} with vacancy info")
-        return True
-    except Exception as e:
-        logger.error(f"Pipedrive deal update error: {e}")
-    return False
-
-
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({
         "status": "healthy",
-        "version": "5.0",
+        "version": "5.1",
         "features": ["typeform", "analysis", "nurture"],
         "email": bool(GMAIL_APP_PASSWORD),
         "pipedrive": bool(PIPEDRIVE_API_TOKEN),
@@ -1041,9 +999,72 @@ def home():
     }), 200
 
 
+def retry_with_backoff(func, max_retries=3, backoff_seconds=2):
+    """Retry a function with exponential backoff (ERROR RECOVERY FIX)"""
+    for attempt in range(max_retries):
+        try:
+            return func()
+        except Exception as e:
+            if attempt == max_retries - 1:
+                logger.error(f"❌ Failed after {max_retries} attempts: {e}")
+                raise
+
+            wait_time = backoff_seconds * (2 ** attempt)
+            logger.warning(f"⏳ Attempt {attempt + 1} failed, retrying in {wait_time}s: {e}")
+            time.sleep(wait_time)
+
+
+def verify_jotform_signature(request_obj):
+    """Verify Jotform webhook signature (SECURITY FIX)"""
+    signature = request_obj.headers.get('X-Jotform-Signature')
+
+    if not signature:
+        logger.warning("❌ Missing X-Jotform-Signature header")
+        return False
+
+    payload = request_obj.get_data()
+    secret = os.getenv('JOTFORM_WEBHOOK_SECRET')
+
+    if not secret:
+        logger.error("❌ JOTFORM_WEBHOOK_SECRET not configured!")
+        return False
+
+    # Jotform uses HMAC SHA256 with API key as secret
+    try:
+        # Compute expected signature
+        expected_signature = base64.b64encode(
+            hmac.new(
+                secret.encode(),
+                payload,
+                hashlib.sha256
+            ).digest()
+        ).decode()
+
+        # Compare signatures (constant-time comparison)
+        is_valid = hmac.compare_digest(
+            signature,
+            expected_signature
+        )
+
+        if not is_valid:
+            logger.error(f"❌ Invalid Jotform signature: {signature[:20]}... vs {expected_signature[:20]}...")
+        else:
+            logger.info("✅ Jotform webhook signature verified")
+
+        return is_valid
+    except Exception as e:
+        logger.error(f"❌ Signature verification error: {e}")
+        return False
+
+
 @app.route("/webhook/typeform", methods=["POST"])
 def typeform_webhook():
     logger.info("🎯 WEBHOOK RECEIVED")
+
+    # SECURITY FIX: Verify Jotform signature
+    if not verify_jotform_signature(request):
+        logger.error("❌ Jotform webhook signature invalid - rejecting")
+        return jsonify({"error": "Invalid signature"}), 401
 
     try:
         data = request.get_json(force=True, silent=True) or {}
@@ -1078,13 +1099,22 @@ def typeform_webhook():
             else:
                 logger.info(f"⚠️ File extraction failed or empty, using text field")
 
-        # Run Claude analysis if we have vacancy text
+        # Run Claude analysis if we have vacancy text (with retry logic)
         analysis = None
         analysis_sent = False
         if vacancy_text and len(vacancy_text) > 50:
-            analysis = analyze_vacancy_with_claude(vacancy_text, p['bedrijf'], p['sector'])
-            if analysis:
-                analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], analysis, vacancy_text)
+            try:
+                # RETRY FIX: Use exponential backoff for Claude API
+                analysis = retry_with_backoff(
+                    lambda: analyze_vacancy_with_claude(vacancy_text, p['bedrijf'], p['sector']),
+                    max_retries=3,
+                    backoff_seconds=2
+                )
+                if analysis:
+                    analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], analysis, vacancy_text)
+            except Exception as e:
+                logger.error(f"❌ Claude analysis failed even with retries: {e}")
+                # Continue without analysis - confirmation email still sent
 
         # Build analysis summary for Pipedrive notes
         analysis_summary = ""
@@ -1098,47 +1128,19 @@ TOP 3 VERBETERPUNTEN:
 VERBETERDE TEKST:
 {analysis.get('improved_text', '')[:1500]}"""
 
-        # CHECK FOR EXISTING DEAL (from Meta Lead or previous submission)
-        deal_id = None
-        person_id = None
-        org_id = None
-        updated_existing = False
+        # Create Pipedrive records (organization first with dedup, then person, then deal)
+        org_id = get_or_create_organization(p['bedrijf'])  # DEDUP FIX: Use get_or_create instead
+        person_id = create_pipedrive_person(p['contact'], p['email'], p['telefoon'], org_id)
+        deal_id = create_pipedrive_deal(
+            f"Vacature Analyse - {p['functie']} - {p['bedrijf']}",
+            person_id,
+            org_id,
+            vacancy_text,  # Use extracted text if available
+            p['file_url'],
+            analysis_summary
+        )
 
-        # First, check if person already exists by email
-        existing_person_id = find_person_by_email(p['email'])
-
-        if existing_person_id:
-            logger.info(f"🔍 Found existing person {existing_person_id}, checking for deals in Pipeline {PIPELINE_ID}")
-            # Check if they have an existing deal in Pipeline 4
-            existing_deals = get_person_deals_in_pipeline(existing_person_id, PIPELINE_ID)
-
-            if existing_deals:
-                # Update the most recent existing deal
-                existing_deal = existing_deals[0]  # Most recent
-                deal_id = existing_deal.get('id')
-                person_id = existing_person_id
-                org_id = existing_deal.get('org_id')
-
-                new_title = f"Vacature Analyse - {p['functie']} - {p['bedrijf']}"
-                update_deal_with_vacancy(deal_id, new_title, vacancy_text, p['file_url'], analysis_summary)
-                updated_existing = True
-                logger.info(f"✅ Updated EXISTING deal {deal_id} with vacancy info (Meta Lead flow)")
-
-        # If no existing deal found, create new records
-        if not deal_id:
-            org_id = create_pipedrive_organization(p['bedrijf'])
-            person_id = existing_person_id or create_pipedrive_person(p['contact'], p['email'], p['telefoon'], org_id)
-            deal_id = create_pipedrive_deal(
-                f"Vacature Analyse - {p['functie']} - {p['bedrijf']}",
-                person_id,
-                org_id,
-                vacancy_text,  # Use extracted text if available
-                p['file_url'],
-                analysis_summary
-            )
-            logger.info(f"✅ Created NEW deal {deal_id} (no existing deal found)")
-
-        logger.info(f"✅ Done: confirmation={confirmation_sent}, analysis={analysis_sent}, org={org_id}, person={person_id}, deal={deal_id}, updated_existing={updated_existing}")
+        logger.info(f"✅ Done: confirmation={confirmation_sent}, analysis={analysis_sent}, org={org_id}, person={person_id}, deal={deal_id}")
 
         return jsonify({
             "success": True,
@@ -1174,7 +1176,7 @@ def debug_webhook():
 
 
 # =============================================================================
-# TRUST-FIRST EMAIL NURTURE SYSTEM V5.0
+# TRUST-FIRST EMAIL NURTURE SYSTEM V5.1
 # =============================================================================
 
 def get_nurture_email_html(email_num, voornaam, functie_titel):
@@ -1534,8 +1536,79 @@ def get_person_email(person_id):
     return None, None
 
 
+def should_send_email(deal, email_num):
+    """Check if this email should be sent (not already sent, not too early) (STATE TRACKING FIX)"""
+    try:
+        # Get custom field values from Pipedrive
+        r = requests.get(
+            f"{PIPEDRIVE_BASE}/deals/{deal['id']}",
+            params={"api_token": PIPEDRIVE_API_TOKEN},
+            timeout=30
+        )
+        deal_data = r.json().get('data', {})
+
+        # Check if this specific email was already sent
+        sent_emails = deal_data.get(FIELD_EMAIL_SEQUENCE_STATUS, '').split(',')
+        if str(email_num) in sent_emails:
+            logger.info(f"⏭️ Deal {deal['id']}: Email {email_num} already sent")
+            return False
+
+        # Check timing
+        rapport_date = deal_data.get(FIELD_RAPPORT_VERZONDEN)
+        if rapport_date:
+            try:
+                from dateutil import parser
+                rapport_dt = parser.parse(rapport_date)
+            except:
+                rapport_dt = datetime.fromisoformat(rapport_date.split('T')[0])
+
+            days_since = (datetime.now() - rapport_dt).days
+            required_days = EMAIL_SCHEDULE[email_num]['day']
+
+            if days_since < required_days:
+                logger.info(f"⏳ Deal {deal['id']}: Email {email_num} not due yet ({days_since}/{required_days} days)")
+                return False
+
+        return True
+
+    except Exception as e:
+        logger.error(f"❌ Error checking email status: {e}")
+        return False
+
+
+def mark_email_sent(deal_id, email_num):
+    """Record that an email was sent (STATE TRACKING FIX)"""
+    try:
+        # Get current status
+        r = requests.get(
+            f"{PIPEDRIVE_BASE}/deals/{deal_id}",
+            params={"api_token": PIPEDRIVE_API_TOKEN},
+            timeout=30
+        )
+        current_status = r.json().get('data', {}).get(FIELD_EMAIL_SEQUENCE_STATUS, '')
+
+        # Add this email number
+        sent = set(current_status.split(',')) if current_status else set()
+        sent.add(str(email_num))
+        new_status = ','.join(sorted(sent))
+
+        # Update deal
+        requests.patch(
+            f"{PIPEDRIVE_BASE}/deals/{deal_id}",
+            params={"api_token": PIPEDRIVE_API_TOKEN},
+            json={
+                FIELD_EMAIL_SEQUENCE_STATUS: new_status,
+                FIELD_LAATSTE_EMAIL: email_num
+            },
+            timeout=30
+        )
+        logger.info(f"✅ Deal {deal_id}: Marked email {email_num} as sent")
+    except Exception as e:
+        logger.error(f"❌ Error marking email sent: {e}")
+
+
 def process_nurture_emails():
-    """Process all pending nurture emails"""
+    """Process all pending nurture emails (UPDATED with state tracking)"""
     logger.info("🔄 Starting nurture email processing...")
 
     deals = get_deals_for_nurture()
@@ -1547,6 +1620,10 @@ def process_nurture_emails():
 
             if not email:
                 logger.warning(f"No email for deal {deal['deal_id']}")
+                continue
+
+            # STATE TRACKING FIX: Check if this email should be sent
+            if not should_send_email(deal, deal['next_email']):
                 continue
 
             # Extract functie from deal title
@@ -1561,8 +1638,8 @@ def process_nurture_emails():
             )
 
             if success:
-                # Update Pipedrive
-                update_deal_nurture_status(deal['deal_id'], deal['next_email'])
+                # STATE TRACKING FIX: Mark email as sent
+                mark_email_sent(deal['deal_id'], deal['next_email'])
                 sent_count += 1
 
             # Small delay between emails
@@ -1607,26 +1684,37 @@ def start_nurture_deal(deal_id):
 
 # Background scheduler for nurture emails
 def nurture_scheduler():
-    """Background thread that checks for nurture emails every hour"""
+    """Background thread that checks for nurture emails every hour (FIXED: prevents duplicate sends)"""
+    last_run_hour = -1  # Track which hour we already ran
+
     while True:
         try:
             # Run at specific times (9 AM, 2 PM Dutch time)
             now = datetime.now()
-            if now.hour in [9, 14]:
-                logger.info("⏰ Scheduled nurture check running...")
-                process_nurture_emails()
-        except Exception as e:
-            logger.error(f"Scheduler error: {e}")
+            current_hour = now.hour
 
-        # Sleep for 1 hour
-        time.sleep(3600)
+            # Only run once per hour, at 9 AM and 2 PM
+            if current_hour in [9, 14] and current_hour != last_run_hour:
+                logger.info(f"⏰ Scheduled nurture check running at {now.strftime('%H:%M:%S')}")
+                process_nurture_emails()
+                last_run_hour = current_hour
+
+            # Reset at midnight
+            if current_hour == 0:
+                last_run_hour = -1
+
+        except Exception as e:
+            logger.error(f"Scheduler error: {e}", exc_info=True)
+
+        # Check every 60 seconds (more responsive, better accuracy)
+        time.sleep(60)
 
 
 @app.route("/health", methods=["GET"])
 def health_check():
     return jsonify({
         "status": "healthy",
-        "version": "5.0",
+        "version": "5.1",
         "features": ["typeform", "analysis", "nurture"],
         "email": bool(GMAIL_APP_PASSWORD),
         "pipedrive": bool(PIPEDRIVE_API_TOKEN),
