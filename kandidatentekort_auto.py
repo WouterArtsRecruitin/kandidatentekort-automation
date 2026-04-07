@@ -51,6 +51,8 @@ app = Flask(__name__)
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 PIPEDRIVE_API_TOKEN = os.getenv('PIPEDRIVE_API_TOKEN')
 TYPEFORM_API_TOKEN = os.getenv('TYPEFORM_API_TOKEN')  # For file downloads
+RESEND_API_KEY = os.getenv('RESEND_API_KEY')
+RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', 'noreply@kandidatentekort.nl')
 GMAIL_USER = os.getenv('GMAIL_USER', 'artsrecruitin@gmail.com')
 GMAIL_APP_PASSWORD = os.getenv('GMAIL_APP_PASSWORD') or os.getenv('GMAIL_PASS')
 PIPEDRIVE_BASE = "https://api.pipedrive.com/v1"
@@ -235,23 +237,32 @@ def get_confirmation_email_html(voornaam, bedrijf, functie):
 
 
 def send_email(to_email, subject, html_body):
-    logger.info(f"📧 Sending to: {to_email}")
-    if not GMAIL_APP_PASSWORD:
-        logger.error("❌ GMAIL_APP_PASSWORD not set!")
+    """Send email via Resend API (production-ready transactional email)"""
+    logger.info(f"📧 Sending via Resend to: {to_email}")
+
+    if not RESEND_API_KEY:
+        logger.error("❌ RESEND_API_KEY not set!")
         return False
+
     try:
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From'] = f"Kandidatentekort.nl <{GMAIL_USER}>"
-        msg['To'] = to_email
-        msg.attach(MIMEText(html_body, 'html', 'utf-8'))
-        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=30)
-        server.starttls()
-        server.login(GMAIL_USER, GMAIL_APP_PASSWORD.replace(" ", ""))
-        server.send_message(msg)
-        server.quit()
-        logger.info(f"✅ Email sent to {to_email}")
-        return True
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {RESEND_API_KEY}"},
+            json={
+                "from": RESEND_FROM_EMAIL,
+                "to": to_email,
+                "subject": subject,
+                "html": html_body
+            },
+            timeout=10
+        )
+
+        if response.status_code == 200:
+            logger.info(f"✅ Email sent via Resend to {to_email}")
+            return True
+        else:
+            logger.error(f"❌ Resend API error: {response.status_code} - {response.text}")
+            return False
     except Exception as e:
         logger.error(f"❌ Email failed: {e}")
         return False

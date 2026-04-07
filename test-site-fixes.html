@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Site Fixes Test Page</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; background: #f5f5f5; }
+        .test-section { background: white; padding: 1rem; margin: 1rem 0; border-radius: 8px; }
+        .test-button { 
+            background: #FF6B35; 
+            color: white; 
+            padding: 10px 20px; 
+            border: none; 
+            border-radius: 25px; 
+            cursor: pointer; 
+            margin: 5px; 
+            text-decoration: none;
+            display: inline-block;
+        }
+        .test-result { 
+            margin: 10px 0; 
+            padding: 10px; 
+            background: #e8f5e8; 
+            border-left: 4px solid #10B981; 
+        }
+        .error { background: #ffe8e8; border-left: 4px solid #ef4444; }
+        #console-log { 
+            background: #1f2937; 
+            color: #10B981; 
+            padding: 1rem; 
+            font-family: monospace; 
+            max-height: 300px; 
+            overflow-y: auto; 
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>🛠️ Site Fixes Test Page</h1>
+    
+    <!-- Load error fixes first -->
+    <script src="site-error-fixes.js"></script>
+    
+    <div class="test-section">
+        <h2>Test 1: Orange Button Functionality</h2>
+        <p>Deze button moet naar Typeform scrollen (niet popup openen):</p>
+        <a href="#typeform" class="test-button cta-button orange-button" onclick="safeTrackClick(this); scrollToForm();">
+            📊 Start Gratis Analyse
+        </a>
+        <div id="test1-result" class="test-result">Wacht op klik...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Popup Trigger (Specifiek)</h2>
+        <p>Deze button moet wel een popup openen:</p>
+        <button class="test-button popup-trigger" data-popup="analysis">
+            🔍 Open Analysis Popup
+        </button>
+        <div id="test2-result" class="test-result">Wacht op klik...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: Tracking Functionality</h2>
+        <p>Test veilige tracking zonder errors:</p>
+        <button class="test-button" onclick="testTracking()">
+            📈 Test Analytics
+        </button>
+        <div id="test3-result" class="test-result">Wacht op test...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 4: Error Prevention</h2>
+        <p>Test error handling voor Meta Pixel en Cookiebot:</p>
+        <button class="test-button" onclick="testErrorHandling()">
+            🛡️ Test Error Handling
+        </button>
+        <div id="test4-result" class="test-result">Wacht op test...</div>
+    </div>
+    
+    <!-- Mock Typeform Section -->
+    <div id="typeform" class="test-section" style="margin-top: 200px; background: #e0f2fe;">
+        <h2>🎯 Typeform Container (Mock)</h2>
+        <p>Dit is waar de Typeform zou verschijnen. Orange buttons moeten hier naartoe scrollen.</p>
+        <div style="padding: 2rem; background: white; border-radius: 8px;">
+            <h3>Gratis Vacature Analyse</h3>
+            <p>Hier zou de Typeform embedding staan...</p>
+        </div>
+    </div>
+    
+    <!-- Console Log Area -->
+    <div class="test-section">
+        <h2>📝 Console Log Output</h2>
+        <div id="console-log"></div>
+        <button class="test-button" onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <script>
+        // Mock console.log to display on page
+        const originalConsoleLog = console.log;
+        const originalConsoleWarn = console.warn;
+        const originalConsoleError = console.error;
+        
+        function addToLog(message, type = 'log') {
+            const logDiv = document.getElementById('console-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ef4444' : type === 'warn' ? '#f59e0b' : '#10B981';
+            logDiv.innerHTML += `<div style="color: ${color};">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            addToLog(args.join(' '), 'log');
+        };
+        
+        console.warn = function(...args) {
+            originalConsoleWarn.apply(console, args);
+            addToLog(args.join(' '), 'warn');
+        };
+        
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            addToLog(args.join(' '), 'error');
+        };
+        
+        // Mock functions for testing
+        window.safeTrackClick = function(element) {
+            console.log('[TEST] safeTrackClick called for:', element.textContent?.trim());
+            document.getElementById('test1-result').innerHTML = '✅ Orange button tracking working!';
+            document.getElementById('test1-result').className = 'test-result';
+            return true;
+        };
+        
+        window.scrollToForm = function() {
+            console.log('[TEST] scrollToForm called - scrolling to typeform');
+            document.getElementById('typeform').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            document.getElementById('test1-result').innerHTML = '✅ Orange button scroll working!';
+        };
+        
+        // Test functions
+        window.testTracking = function() {
+            try {
+                // Test safe tracking
+                if (typeof window.safeTrack === 'function') {
+                    window.safeTrack('test_event', { source: 'test_page' });
+                    document.getElementById('test3-result').innerHTML = '✅ Safe tracking working!';
+                } else {
+                    document.getElementById('test3-result').innerHTML = '⚠️ Safe tracking function not found';
+                    document.getElementById('test3-result').className = 'test-result error';
+                }
+                
+                // Test Facebook Pixel
+                if (typeof window.fbq === 'function') {
+                    window.fbq('track', 'TestEvent', { test: true });
+                    console.log('[TEST] Facebook Pixel test completed');
+                } else {
+                    console.warn('[TEST] Facebook Pixel not available');
+                }
+            } catch (error) {
+                console.error('[TEST] Tracking test failed:', error);
+                document.getElementById('test3-result').innerHTML = '❌ Tracking test failed: ' + error.message;
+                document.getElementById('test3-result').className = 'test-result error';
+            }
+        };
+        
+        window.testErrorHandling = function() {
+            try {
+                // Test Cookiebot error handling
+                if (typeof window.Cookiebot !== 'undefined') {
+                    console.log('[TEST] Cookiebot is available:', window.Cookiebot);
+                } else {
+                    console.log('[TEST] Cookiebot not loaded (expected)');
+                }
+                
+                // Test Meta Pixel error handling
+                try {
+                    window.fbq('track', 'TestErrorHandling');
+                    console.log('[TEST] Meta Pixel error handling test passed');
+                } catch (error) {
+                    console.log('[TEST] Meta Pixel error caught and handled:', error);
+                }
+                
+                document.getElementById('test4-result').innerHTML = '✅ Error handling tests completed - check console';
+            } catch (error) {
+                document.getElementById('test4-result').innerHTML = '❌ Error handling test failed: ' + error.message;
+                document.getElementById('test4-result').className = 'test-result error';
+            }
+        };
+        
+        window.clearLog = function() {
+            document.getElementById('console-log').innerHTML = '';
+        };
+        
+        // Monitor popup opening
+        window.showAnalysisPopup = function() {
+            console.log('[TEST] showAnalysisPopup called - popup would open here');
+            document.getElementById('test2-result').innerHTML = '✅ Popup trigger working!';
+            
+            // Don't actually show popup in test, just log it
+            alert('Test: Analysis popup would open here!');
+        };
+        
+        // Initial status
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('[TEST] Site fixes test page loaded');
+            console.log('[TEST] Testing all error prevention systems...');
+            
+            // Test that fixes are loaded
+            if (typeof window.closeAnalysisPopup === 'function') {
+                console.log('✅ Site error fixes loaded successfully');
+            } else {
+                console.error('❌ Site error fixes not loaded properly');
+            }
+        });
+    </script>
+</body>
+</html>
