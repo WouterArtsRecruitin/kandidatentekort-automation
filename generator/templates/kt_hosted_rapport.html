@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vacature Analyse Rapport — {{ bedrijf }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: #1f2937;
+            background: #f9fafb;
+            line-height: 1.6;
+        }
+        .container { max-width: 900px; margin: 0 auto; background: white; }
+
+        /* HEADER */
+        header {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo { font-weight: 600; color: #1f2937; font-size: 16px; }
+        .header-title { font-size: 13px; color: #6b7280; }
+
+        /* HERO */
+        .hero {
+            background: #f3f4f6;
+            padding: 60px 40px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .hero h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #1f2937;
+        }
+        .hero .meta {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        .score-circle {
+            float: right;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 3px solid {{ score_color }};
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: white;
+            margin-left: 30px;
+            font-size: 28px;
+            font-weight: 700;
+            color: {{ score_color }};
+        }
+        .score-label {
+            display: inline-block;
+            background: {{ score_color }};
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 10px;
+            text-align: center;
+            width: 100%;
+        }
+        .hero::after { content: ""; display: table; clear: both; }
+
+        /* SAMENVATTING */
+        .summary {
+            margin: 40px;
+            padding: 20px;
+            border-left: 4px solid #f59e0b;
+            background: #fffbeb;
+        }
+        .summary p {
+            color: #92400e;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        /* SCORE BREAKDOWN */
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 40px 40px 20px 40px;
+            color: #1f2937;
+        }
+        .categories { margin: 20px 40px; }
+        .category-row {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            background: white;
+        }
+        .category-name {
+            flex: 1;
+            font-weight: 500;
+            color: #1f2937;
+            font-size: 14px;
+        }
+        .category-bar {
+            flex: 2;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            margin: 0 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .category-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: {{ score_color }};
+        }
+        .category-score {
+            width: 50px;
+            text-align: right;
+            font-weight: 600;
+            color: {{ score_color }};
+            font-size: 14px;
+        }
+        .category-icon {
+            width: 20px;
+            margin-left: 10px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        /* MARKET ANALYSIS */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin: 20px 40px;
+            padding: 0;
+        }
+        .stat-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            padding: 20px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.5;
+        }
+
+        /* SALARY BENCHMARK */
+        .salary-section { margin: 40px; }
+        .salary-header {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .salary-box {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .salary-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 5px;
+        }
+        .salary-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .salary-warning {
+            background: #fee2e2;
+            border-left: 4px solid #ef4444;
+            padding: 12px 15px;
+            margin-top: 15px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #7f1d1d;
+        }
+
+        /* IMPROVED TEXT */
+        .improved-section { margin: 40px; }
+        .improved-box {
+            background: #ecfdf5;
+            border: 2px solid #10b981;
+            padding: 20px;
+            border-radius: 4px;
+            position: relative;
+        }
+        .improved-badge {
+            position: absolute;
+            top: -10px;
+            left: 15px;
+            background: #10b981;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .improved-text {
+            font-size: 13px;
+            color: #166534;
+            line-height: 1.7;
+            margin-top: 15px;
+        }
+        .copy-btn {
+            float: right;
+            background: white;
+            border: 1px solid #d1d5db;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 10px;
+        }
+        .copy-btn:hover { background: #f9fafb; }
+
+        /* ACTION ITEMS */
+        .action-items { margin: 40px; padding: 0; }
+        .action-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        .action-number {
+            background: #f59e0b;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        .action-text { color: #1f2937; font-size: 14px; }
+
+        /* CHANNELS */
+        .channels { margin: 40px; }
+        .channel-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .channel-table th {
+            background: #f3f4f6;
+            padding: 12px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: #6b7280;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .channel-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 13px;
+        }
+        .channel-name { font-weight: 500; color: #1f2937; }
+        .channel-desc { color: #6b7280; }
+        .channel-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status-active { background: #dcfce7; color: #166534; }
+        .status-warning { background: #fef3c7; color: #92400e; }
+        .status-add { background: #dbeafe; color: #1e40af; }
+
+        /* CTA */
+        .cta-section {
+            background: #1e3a8a;
+            color: white;
+            padding: 40px;
+            text-align: center;
+            margin: 40px;
+            border-radius: 4px;
+        }
+        .cta-section h3 {
+            font-size: 18px;
+            margin-bottom: 12px;
+        }
+        .cta-section p {
+            font-size: 14px;
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+        .cta-btn {
+            display: inline-block;
+            background: #f59e0b;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        /* FOOTER */
+        footer {
+            background: #f3f4f6;
+            padding: 20px 40px;
+            text-align: center;
+            font-size: 12px;
+            color: #6b7280;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        /* PRINT */
+        @media print {
+            body { background: white; }
+            .container { box-shadow: none; }
+            a { color: #1f2937; text-decoration: none; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- HEADER -->
+    <header>
+        <div class="logo">kandidatentekort.nl</div>
+        <div class="header-title">Vacature Analyse Rapport</div>
+    </header>
+
+    <!-- HERO -->
+    <div class="hero">
+        <div class="score-circle">
+            <span>{{ score }}</span>
+            <div class="score-label">{{ score_label }}</div>
+        </div>
+        <h1>Vacature Analyse</h1>
+        <div class="meta">
+            <strong>{{ functie }}</strong><br>
+            {{ bedrijf }}<br>
+            Rapport gegenereerd op {{ date }}
+        </div>
+    </div>
+
+    <!-- SAMENVATTING -->
+    <div class="summary">
+        <p>{{ samenvatting }}</p>
+    </div>
+
+    <!-- SCORE BREAKDOWN -->
+    <h2 class="section-title">Score Breakdown</h2>
+    <div class="categories">
+        {% for cat in categories %}
+        <div class="category-row">
+            <div class="category-name">{{ cat.name }}</div>
+            <div class="category-bar">
+                <div class="category-fill" style="width: {{ (cat.score / 100) * 100 }}%;"></div>
+            </div>
+            <div class="category-score">{{ cat.score }}</div>
+            <div class="category-icon">
+                {% if cat.status == 'ok' %}✓{% elif cat.status == 'warning' %}!{% else %}✗{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- MARKET ANALYSIS -->
+    <h2 class="section-title">Marktanalyse</h2>
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-number">{{ market_analysis.competing_vacancies }}</div>
+            <div class="stat-label">Concurrerende<br>vacatures</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ market_analysis.potential_candidates }}</div>
+            <div class="stat-label">Potentiële<br>kandidaten</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ market_analysis.market_median_salary }}</div>
+            <div class="stat-label">Markt<br>mediaan salaris</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ market_analysis.supply_demand_ratio }}</div>
+            <div class="stat-label">Vraag/aanbod<br>ratio</div>
+        </div>
+    </div>
+
+    <!-- SALARY BENCHMARK -->
+    <div class="salary-section">
+        <h2 class="section-title">Salaris Benchmark</h2>
+        <div class="salary-header">
+            <div class="salary-box">
+                <div class="salary-label">Aangeboden:</div>
+                <div class="salary-value">{{ salary_benchmark.offered_range }}</div>
+            </div>
+            <div class="salary-box">
+                <div class="salary-label">Markt mediaan:</div>
+                <div class="salary-value">{{ salary_benchmark.market_range }}</div>
+            </div>
+            <div class="salary-box">
+                <div class="salary-label">Verschil:</div>
+                <div class="salary-value">{{ salary_benchmark.difference }}</div>
+            </div>
+        </div>
+        <div class="salary-warning">⚠️ {{ salary_benchmark.warning }}</div>
+    </div>
+
+    <!-- IMPROVED TEXT -->
+    <div class="improved-section">
+        <h2 class="section-title">Herschreven Vacaturetekst</h2>
+        <div class="improved-box">
+            <div class="improved-badge">VERBETERD</div>
+            <button class="copy-btn" onclick="navigator.clipboard.writeText(document.querySelector('.improved-text').innerText)">
+                Kopieer tekst
+            </button>
+            <div class="improved-text">{{ improved_text }}</div>
+        </div>
+    </div>
+
+    <!-- ACTION ITEMS -->
+    <h2 class="section-title">Actieplan</h2>
+    <div class="action-items">
+        {% for i, item in enumerate(action_items, 1) %}
+        <div class="action-item">
+            <div class="action-number">{{ i }}</div>
+            <div class="action-text">{{ item }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- CHANNELS -->
+    <div class="channels">
+        <h2 class="section-title">Aanbevolen Kanalen</h2>
+        <table class="channel-table">
+            <thead>
+                <tr>
+                    <th>Kanaal</th>
+                    <th>Beschrijving</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ch in recommended_channels %}
+                <tr>
+                    <td class="channel-name">{{ ch.name }}</td>
+                    <td class="channel-desc">{{ ch.description }}</td>
+                    <td>
+                        <span class="channel-status
+                            {% if ch.status == 'ACTIEF' %}status-active
+                            {% elif ch.status == 'TOEVOEGEN' %}status-add
+                            {% else %}status-warning{% endif %}">
+                            {{ ch.status }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-section">
+        <h3>Hulp nodig bij het invullen van deze vacature?</h3>
+        <p>Plan een gratis 15-minuten intake met een recruitment specialist.</p>
+        <a href="https://calendly.com/d/3sr-tyg-kt2/sollicitatie" class="cta-btn">Plan een gesprek →</a>
+    </div>
+
+    <!-- FOOTER -->
+    <footer>
+        kandidatentekort.nl — Vacature analyse powered by Recruitin B.V.
+    </footer>
+</div>
+</body>
+</html>

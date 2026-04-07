@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uw vacature-analyse is klaar</title>
+</head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#f9fafb;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;">
+<tr><td>
+<table width="600" cellpadding="0" cellspacing="0" align="center" style="background-color:white;font-size:14px;line-height:1.6;color:#1f2937;">
+
+<!-- HEADER -->
+<tr>
+<td style="background-color:white;padding:20px;border-bottom:1px solid #e5e7eb;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-weight:bold;color:#1f2937;font-size:16px;">kandidatentekort.nl</td>
+</tr></table>
+</td>
+</tr>
+
+<!-- HERO -->
+<tr>
+<td style="background-color:#f3f4f6;padding:30px;border-bottom:1px solid #e5e7eb;">
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr><td style="font-size:24px;font-weight:bold;color:#1f2937;margin-bottom:8px;mso-line-height-rule:exactly;line-height:24px;">
+Uw vacature-analyse is klaar
+</td></tr>
+<tr><td style="font-size:14px;color:#6b7280;margin-top:12px;">{{ functie }} — {{ bedrijf }}</td></tr>
+</table>
+</td>
+</tr>
+
+<!-- SCORE BOX -->
+<tr>
+<td style="padding:30px;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;border:1px solid #e5e7eb;border-radius:4px;">
+<tr><td style="padding:20px;text-align:center;">
+<table cellpadding="0" cellspacing="0" align="center">
+<tr><td style="width:80px;height:80px;border:3px solid {{ score_color }};border-radius:50%;text-align:center;font-size:32px;font-weight:bold;color:{{ score_color }};mso-line-height-rule:exactly;line-height:80px;">{{ score }}</td></tr>
+</table>
+<div style="margin-top:10px;font-weight:bold;color:white;background-color:{{ score_color }};padding:4px 12px;display:inline-block;border-radius:4px;font-size:12px;">{{ score_label }}</div>
+</td></tr>
+</table>
+</td>
+</tr>
+
+<!-- BEVINDINGEN -->
+<tr><td style="padding:30px;border-top:1px solid #e5e7eb;">
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr><td style="font-weight:bold;font-size:16px;margin-bottom:15px;">Belangrijkste bevindingen</td></tr>
+
+{% for cat in categories[:3] %}
+<tr><td style="padding:12px;background-color:white;border:1px solid #e5e7eb;margin-bottom:8px;border-radius:4px;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td width="20" style="font-size:18px;padding-right:10px;">
+{% if cat.status == 'ok' %}✓{% elif cat.status == 'warning' %}⚠{% else %}✗{% endif %}
+</td>
+<td>
+<div style="font-weight:bold;color:#1f2937;font-size:13px;">{{ cat.name }}</div>
+<div style="color:#6b7280;font-size:12px;margin-top:3px;">Score: {{ cat.score }}/100</div>
+</td>
+</tr></table>
+</td></tr>
+{% endfor %}
+</table>
+</td>
+</tr>
+
+<!-- MARKET SNAPSHOT -->
+<tr><td style="padding:30px;border-top:1px solid #e5e7eb;">
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr><td style="font-weight:bold;font-size:16px;margin-bottom:15px;">Markt Snapshot</td></tr>
+<tr><td>
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr>
+<td width="33%" style="padding:12px;background-color:#f3f4f6;text-align:center;border-radius:4px;margin-right:8px;">
+<div style="font-size:24px;font-weight:bold;color:#1f2937;">{{ market_analysis.competing_vacancies }}</div>
+<div style="font-size:11px;color:#6b7280;margin-top:5px;">concurrenten</div>
+</td>
+<td width="33%" style="padding:12px;background-color:#f3f4f6;text-align:center;border-radius:4px;margin-right:8px;">
+<div style="font-size:24px;font-weight:bold;color:#1f2937;">{{ market_analysis.potential_candidates }}</div>
+<div style="font-size:11px;color:#6b7280;margin-top:5px;">kandidaten</div>
+</td>
+<td width="34%" style="padding:12px;background-color:#f3f4f6;text-align:center;border-radius:4px;">
+<div style="font-size:24px;font-weight:bold;color:#1f2937;">{{ market_analysis.supply_demand_ratio }}</div>
+<div style="font-size:11px;color:#6b7280;margin-top:5px;">vraag/aanbod</div>
+</td>
+</tr>
+</table>
+</td></tr>
+</table>
+</td>
+</tr>
+
+<!-- QUICK WINS -->
+<tr><td style="padding:30px;border-top:1px solid #e5e7eb;">
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr><td style="font-weight:bold;font-size:16px;margin-bottom:15px;">Top 3 Quick Wins</td></tr>
+
+{% for i, item in enumerate(action_items, 1) %}
+<tr><td style="padding:8px 0;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td width="20" style="font-weight:bold;color:#1f2937;">{{ i }}.</td>
+<td style="padding-left:10px;color:#1f2937;font-size:13px;">{{ item }}</td>
+</tr></table>
+</td></tr>
+{% endfor %}
+</table>
+</td>
+</tr>
+
+<!-- CTA -->
+<tr><td style="padding:20px;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td style="background-color:#2563eb;padding:15px;text-align:center;border-radius:4px;">
+<a href="{{ rapport_url }}" style="color:white;text-decoration:none;font-weight:bold;font-size:14px;">Bekijk volledig rapport →</a>
+</td></tr></table>
+</td></tr>
+
+<!-- HELP BOX -->
+<tr><td style="padding:20px;background-color:#f3f4f6;border-top:1px solid #e5e7eb;border-radius:4px;">
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr><td style="font-weight:bold;color:#1f2937;margin-bottom:8px;">Hulp nodig?</td></tr>
+<tr><td style="color:#6b7280;font-size:13px;">Plan een gratis 15-min intake gesprek met een recruitment specialist.</td></tr>
+</table>
+</td></tr>
+
+<!-- FOOTER -->
+<tr><td style="padding:20px;text-align:center;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td>
+kandidatentekort.nl — powered by Recruitin B.V.
+</td></tr></table>
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>

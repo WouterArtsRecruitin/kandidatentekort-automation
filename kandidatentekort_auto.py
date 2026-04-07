@@ -29,6 +29,15 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, jsonify
 
+# Report generator (V5.2: Figma report templates)
+try:
+    from generator.report_builder import build_hosted_rapport, build_email_summary
+    from generator.storage_uploader import upload_rapport
+    REPORT_BUILDER_AVAILABLE = True
+except ImportError:
+    REPORT_BUILDER_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+
 # PDF and DOCX extraction
 try:
     from PyPDF2 import PdfReader
@@ -279,7 +288,7 @@ def analyze_vacancy_with_claude(vacature_text, bedrijf, sector=""):
         logger.error("❌ ANTHROPIC_API_KEY not set!")
         return None
 
-    prompt = f"""Je bent een expert recruitment copywriter gespecialiseerd in de Nederlandse technische arbeidsmarkt. Analyseer deze vacaturetekst en verbeter ze voor maximale kandidaat-conversie.
+    prompt = f"""Je bent een expert recruitment analyst gespecialiseerd in de Nederlandse arbeidsmarkt. Analyseer deze vacaturetekst diepgaand en genereer een strategisch verbeterplan.
 
 ## VACATURETEKST OM TE ANALYSEREN:
 
@@ -291,24 +300,64 @@ def analyze_vacancy_with_claude(vacature_text, bedrijf, sector=""):
 
 ## JOUW OPDRACHT:
 
-Analyseer deze vacaturetekst en lever het volgende in EXACT dit JSON format:
+Analyseer deze vacaturetekst uitgebreid en lever het volgende in EXACT dit JSON format:
 
 {{
-    "overall_score": 7.2,
-    "score_section": "Aantrekkelijkheid: 7/10 - Duidelijkheid: 6/10 - USP's: 5/10 - Call-to-action: 8/10",
+    "overall_score": 6.4,
+    "samenvatting": "Korte samenvatting van score en kritieke bevindingen (max 2 zinnen)",
+    "categories": [
+        {{"name": "Vacaturetitel & Vindbaarheid", "score": 75, "status": "ok"}},
+        {{"name": "Functieomschrijving", "score": 70, "status": "ok"}},
+        {{"name": "Salaris & Arbeidsvoorwaarden", "score": 35, "status": "bad"}},
+        {{"name": "Employer Branding", "score": 40, "status": "bad"}},
+        {{"name": "Kandidaat Experience", "score": 65, "status": "warning"}},
+        {{"name": "Kanaalstrategie", "score": 55, "status": "warning"}},
+        {{"name": "Concurrentiekracht", "score": 50, "status": "warning"}},
+        {{"name": "SEO & Online Vindbaarheid", "score": 80, "status": "ok"}}
+    ],
+    "score_section": "Vacaturetitel: 7/10 - Functieomschrijving: 6/10 - Salaris: 5/10 - Employer Branding: 8/10",
+    "market_analysis": {{
+        "competing_vacancies": 23,
+        "potential_candidates": 142,
+        "market_median_salary": "€4.800",
+        "supply_demand_ratio": "3.2x"
+    }},
+    "salary_benchmark": {{
+        "offered_range": "€4.200 - €5.500",
+        "market_range": "€4.800 - €6.200",
+        "difference": "-12% onder markt",
+        "warning": "⚠ Salaris ligt onder marktgemiddelde — dit verlaagt respons met ~25%"
+    }},
     "top_3_improvements": [
         "Eerste concrete verbetering",
         "Tweede concrete verbetering",
         "Derde concrete verbetering"
     ],
     "improved_text": "De volledige verbeterde vacaturetekst hier (400-600 woorden, pakkende opening, duidelijke functie-inhoud, concrete arbeidsvoorwaarden, sterke employer branding, overtuigende call-to-action)",
+    "action_items": [
+        "Actie 1: ...",
+        "Actie 2: ...",
+        "Actie 3: ...",
+        "Actie 4: ...",
+        "Actie 5: ..."
+    ],
+    "recommended_channels": [
+        {{"name": "Indeed", "description": "Grootste bereik, €0.50/klik", "status": "ACTIEF"}},
+        {{"name": "LinkedIn Jobs", "description": "Gericht op ervaren professionals", "status": "TOEVOEGEN"}},
+        {{"name": "Niche site", "description": "Sector-specifiek", "status": "TOEVOEGEN"}}
+    ],
     "bonus_tips": [
         "Eerste bonus tip voor de recruiter",
         "Tweede bonus tip"
     ]
 }}
 
-BELANGRIJK: Antwoord ALLEEN met valid JSON, geen tekst ervoor of erna."""
+BELANGRIJK:
+- Antwoord ALLEEN met valid JSON
+- Categories: status is "ok" (score 60+), "warning" (40-59), of "bad" (< 40)
+- Scores zijn altijd 0-100 integers
+- Salaris metrics baseer op marktanalyse voor sector/regio
+- Geen tekst voor of na JSON"""
 
     try:
         logger.info("🤖 Starting Claude analysis...")
@@ -732,12 +781,37 @@ table {{border-collapse:collapse !important;}}
 </html>'''
 
 
-def send_analysis_email(to_email, voornaam, bedrijf, analysis, original_text=""):
-    """Send the vacancy analysis report email"""
+def send_analysis_email(to_email, voornaam, bedrijf, functie, analysis, original_text=""):
+    """Send the vacancy analysis report email with hosted rapport"""
+    rapport_url = ""
+    email_html = ""
+
+    # V5.2: Generate hosted rapport + send email with CTA to rapport
+    if REPORT_BUILDER_AVAILABLE:
+        try:
+            logger.info(f"📄 Building hosted rapport for {bedrijf}...")
+            rapport_html = build_hosted_rapport(analysis, bedrijf, functie)
+
+            logger.info(f"☁️ Uploading rapport to Supabase Storage...")
+            rapport_url = upload_rapport(rapport_html, bedrijf)
+
+            logger.info(f"📧 Building email summary...")
+            email_html = build_email_summary(analysis, bedrijf, functie, rapport_url)
+
+            logger.info(f"✅ Rapport generated: {rapport_url}")
+        except Exception as e:
+            logger.error(f"⚠️ Report builder error: {e}, falling back to legacy email")
+            # Fallback to legacy email if report builder fails
+            email_html = get_analysis_email_html(voornaam, bedrijf, analysis, original_text)
+    else:
+        # No report builder available - use legacy email
+        logger.info("⚠️ Report builder not available, using legacy email")
+        email_html = get_analysis_email_html(voornaam, bedrijf, analysis, original_text)
+
     return send_email(
         to_email,
         f"🎯 Jouw Vacature-Analyse voor {bedrijf} is Klaar!",
-        get_analysis_email_html(voornaam, bedrijf, analysis, original_text)
+        email_html
     )
 
 
@@ -1122,7 +1196,7 @@ def typeform_webhook():
                     backoff_seconds=2
                 )
                 if analysis:
-                    analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], analysis, vacancy_text)
+                    analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], p['functie'], analysis, vacancy_text)
             except Exception as e:
                 logger.error(f"❌ Claude analysis failed even with retries: {e}")
                 # Continue without analysis - confirmation email still sent
