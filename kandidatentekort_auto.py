@@ -21,6 +21,9 @@ import smtplib
 import requests
 import threading
 import time
+import hmac
+import hashlib
+import base64
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -871,6 +874,39 @@ def create_pipedrive_organization(name):
     return None
 
 
+def get_or_create_organization(name):
+    """Get existing organization or create new one (DEDUPLICATION FIX)"""
+    if not PIPEDRIVE_API_TOKEN or not name or name == 'Onbekend':
+        return None
+
+    try:
+        # Search for existing organization
+        r = requests.get(
+            f"{PIPEDRIVE_BASE}/organizations/find",
+            params={
+                "api_token": PIPEDRIVE_API_TOKEN,
+                "term": name,
+                "limit": 1
+            },
+            timeout=30
+        )
+
+        if r.status_code == 200:
+            data = r.json().get('data', [])
+            if data and len(data) > 0:
+                org_id = data[0]['id']
+                logger.info(f"✅ Found existing organization: {name} (ID: {org_id})")
+                return org_id
+
+        # Not found, create new
+        return create_pipedrive_organization(name)
+
+    except Exception as e:
+        logger.error(f"Error searching orgs: {e}")
+        # Fallback to creation
+        return create_pipedrive_organization(name)
+
+
 def create_pipedrive_person(contact, email, telefoon, org_id=None):
     if not PIPEDRIVE_API_TOKEN:
         return None
@@ -963,9 +999,72 @@ def home():
     }), 200
 
 
+def retry_with_backoff(func, max_retries=3, backoff_seconds=2):
+    """Retry a function with exponential backoff (ERROR RECOVERY FIX)"""
+    for attempt in range(max_retries):
+        try:
+            return func()
+        except Exception as e:
+            if attempt == max_retries - 1:
+                logger.error(f"❌ Failed after {max_retries} attempts: {e}")
+                raise
+
+            wait_time = backoff_seconds * (2 ** attempt)
+            logger.warning(f"⏳ Attempt {attempt + 1} failed, retrying in {wait_time}s: {e}")
+            time.sleep(wait_time)
+
+
+def verify_jotform_signature(request_obj):
+    """Verify Jotform webhook signature (SECURITY FIX)"""
+    signature = request_obj.headers.get('X-Jotform-Signature')
+
+    if not signature:
+        logger.warning("❌ Missing X-Jotform-Signature header")
+        return False
+
+    payload = request_obj.get_data()
+    secret = os.getenv('JOTFORM_WEBHOOK_SECRET')
+
+    if not secret:
+        logger.error("❌ JOTFORM_WEBHOOK_SECRET not configured!")
+        return False
+
+    # Jotform uses HMAC SHA256 with API key as secret
+    try:
+        # Compute expected signature
+        expected_signature = base64.b64encode(
+            hmac.new(
+                secret.encode(),
+                payload,
+                hashlib.sha256
+            ).digest()
+        ).decode()
+
+        # Compare signatures (constant-time comparison)
+        is_valid = hmac.compare_digest(
+            signature,
+            expected_signature
+        )
+
+        if not is_valid:
+            logger.error(f"❌ Invalid Jotform signature: {signature[:20]}... vs {expected_signature[:20]}...")
+        else:
+            logger.info("✅ Jotform webhook signature verified")
+
+        return is_valid
+    except Exception as e:
+        logger.error(f"❌ Signature verification error: {e}")
+        return False
+
+
 @app.route("/webhook/typeform", methods=["POST"])
 def typeform_webhook():
     logger.info("🎯 WEBHOOK RECEIVED")
+
+    # SECURITY FIX: Verify Jotform signature
+    if not verify_jotform_signature(request):
+        logger.error("❌ Jotform webhook signature invalid - rejecting")
+        return jsonify({"error": "Invalid signature"}), 401
 
     try:
         data = request.get_json(force=True, silent=True) or {}
@@ -1000,13 +1099,22 @@ def typeform_webhook():
             else:
                 logger.info(f"⚠️ File extraction failed or empty, using text field")
 
-        # Run Claude analysis if we have vacancy text
+        # Run Claude analysis if we have vacancy text (with retry logic)
         analysis = None
         analysis_sent = False
         if vacancy_text and len(vacancy_text) > 50:
-            analysis = analyze_vacancy_with_claude(vacancy_text, p['bedrijf'], p['sector'])
-            if analysis:
-                analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], analysis, vacancy_text)
+            try:
+                # RETRY FIX: Use exponential backoff for Claude API
+                analysis = retry_with_backoff(
+                    lambda: analyze_vacancy_with_claude(vacancy_text, p['bedrijf'], p['sector']),
+                    max_retries=3,
+                    backoff_seconds=2
+                )
+                if analysis:
+                    analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], analysis, vacancy_text)
+            except Exception as e:
+                logger.error(f"❌ Claude analysis failed even with retries: {e}")
+                # Continue without analysis - confirmation email still sent
 
         # Build analysis summary for Pipedrive notes
         analysis_summary = ""
@@ -1020,8 +1128,8 @@ TOP 3 VERBETERPUNTEN:
 VERBETERDE TEKST:
 {analysis.get('improved_text', '')[:1500]}"""
 
-        # Create Pipedrive records (organization first, then person, then deal)
-        org_id = create_pipedrive_organization(p['bedrijf'])
+        # Create Pipedrive records (organization first with dedup, then person, then deal)
+        org_id = get_or_create_organization(p['bedrijf'])  # DEDUP FIX: Use get_or_create instead
         person_id = create_pipedrive_person(p['contact'], p['email'], p['telefoon'], org_id)
         deal_id = create_pipedrive_deal(
             f"Vacature Analyse - {p['functie']} - {p['bedrijf']}",
@@ -1428,8 +1536,79 @@ def get_person_email(person_id):
     return None, None
 
 
+def should_send_email(deal, email_num):
+    """Check if this email should be sent (not already sent, not too early) (STATE TRACKING FIX)"""
+    try:
+        # Get custom field values from Pipedrive
+        r = requests.get(
+            f"{PIPEDRIVE_BASE}/deals/{deal['id']}",
+            params={"api_token": PIPEDRIVE_API_TOKEN},
+            timeout=30
+        )
+        deal_data = r.json().get('data', {})
+
+        # Check if this specific email was already sent
+        sent_emails = deal_data.get(FIELD_EMAIL_SEQUENCE_STATUS, '').split(',')
+        if str(email_num) in sent_emails:
+            logger.info(f"⏭️ Deal {deal['id']}: Email {email_num} already sent")
+            return False
+
+        # Check timing
+        rapport_date = deal_data.get(FIELD_RAPPORT_VERZONDEN)
+        if rapport_date:
+            try:
+                from dateutil import parser
+                rapport_dt = parser.parse(rapport_date)
+            except:
+                rapport_dt = datetime.fromisoformat(rapport_date.split('T')[0])
+
+            days_since = (datetime.now() - rapport_dt).days
+            required_days = EMAIL_SCHEDULE[email_num]['day']
+
+            if days_since < required_days:
+                logger.info(f"⏳ Deal {deal['id']}: Email {email_num} not due yet ({days_since}/{required_days} days)")
+                return False
+
+        return True
+
+    except Exception as e:
+        logger.error(f"❌ Error checking email status: {e}")
+        return False
+
+
+def mark_email_sent(deal_id, email_num):
+    """Record that an email was sent (STATE TRACKING FIX)"""
+    try:
+        # Get current status
+        r = requests.get(
+            f"{PIPEDRIVE_BASE}/deals/{deal_id}",
+            params={"api_token": PIPEDRIVE_API_TOKEN},
+            timeout=30
+        )
+        current_status = r.json().get('data', {}).get(FIELD_EMAIL_SEQUENCE_STATUS, '')
+
+        # Add this email number
+        sent = set(current_status.split(',')) if current_status else set()
+        sent.add(str(email_num))
+        new_status = ','.join(sorted(sent))
+
+        # Update deal
+        requests.patch(
+            f"{PIPEDRIVE_BASE}/deals/{deal_id}",
+            params={"api_token": PIPEDRIVE_API_TOKEN},
+            json={
+                FIELD_EMAIL_SEQUENCE_STATUS: new_status,
+                FIELD_LAATSTE_EMAIL: email_num
+            },
+            timeout=30
+        )
+        logger.info(f"✅ Deal {deal_id}: Marked email {email_num} as sent")
+    except Exception as e:
+        logger.error(f"❌ Error marking email sent: {e}")
+
+
 def process_nurture_emails():
-    """Process all pending nurture emails"""
+    """Process all pending nurture emails (UPDATED with state tracking)"""
     logger.info("🔄 Starting nurture email processing...")
 
     deals = get_deals_for_nurture()
@@ -1441,6 +1620,10 @@ def process_nurture_emails():
 
             if not email:
                 logger.warning(f"No email for deal {deal['deal_id']}")
+                continue
+
+            # STATE TRACKING FIX: Check if this email should be sent
+            if not should_send_email(deal, deal['next_email']):
                 continue
 
             # Extract functie from deal title
@@ -1455,8 +1638,8 @@ def process_nurture_emails():
             )
 
             if success:
-                # Update Pipedrive
-                update_deal_nurture_status(deal['deal_id'], deal['next_email'])
+                # STATE TRACKING FIX: Mark email as sent
+                mark_email_sent(deal['deal_id'], deal['next_email'])
                 sent_count += 1
 
             # Small delay between emails
@@ -1501,19 +1684,30 @@ def start_nurture_deal(deal_id):
 
 # Background scheduler for nurture emails
 def nurture_scheduler():
-    """Background thread that checks for nurture emails every hour"""
+    """Background thread that checks for nurture emails every hour (FIXED: prevents duplicate sends)"""
+    last_run_hour = -1  # Track which hour we already ran
+
     while True:
         try:
             # Run at specific times (9 AM, 2 PM Dutch time)
             now = datetime.now()
-            if now.hour in [9, 14]:
-                logger.info("⏰ Scheduled nurture check running...")
-                process_nurture_emails()
-        except Exception as e:
-            logger.error(f"Scheduler error: {e}")
+            current_hour = now.hour
 
-        # Sleep for 1 hour
-        time.sleep(3600)
+            # Only run once per hour, at 9 AM and 2 PM
+            if current_hour in [9, 14] and current_hour != last_run_hour:
+                logger.info(f"⏰ Scheduled nurture check running at {now.strftime('%H:%M:%S')}")
+                process_nurture_emails()
+                last_run_hour = current_hour
+
+            # Reset at midnight
+            if current_hour == 0:
+                last_run_hour = -1
+
+        except Exception as e:
+            logger.error(f"Scheduler error: {e}", exc_info=True)
+
+        # Check every 60 seconds (more responsive, better accuracy)
+        time.sleep(60)
 
 
 @app.route("/health", methods=["GET"])
