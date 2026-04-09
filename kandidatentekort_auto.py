@@ -836,7 +836,7 @@ def parse_typeform_data(webhook_data):
         # V5.1: Check for Zapier FLAT format first
         # ============================================
         if 'email' in webhook_data and 'form_response' not in webhook_data:
-            logger.info("📋 Detected Zapier FLAT format")
+            logger.info("📋 Detected Zapier/Jotform FLAT format")
             result['email'] = webhook_data.get('email', '')
             result['voornaam'] = webhook_data.get('voornaam', 'daar')
             result['contact'] = f"{webhook_data.get('voornaam', '')} {webhook_data.get('achternaam', '')}".strip() or 'Onbekend'
@@ -846,7 +846,34 @@ def parse_typeform_data(webhook_data):
             result['functie'] = (webhook_data.get('functie', '') or webhook_data.get('vacature', 'vacature'))[:50]
             result['sector'] = webhook_data.get('sector', '')
             result['file_url'] = webhook_data.get('file_url', webhook_data.get('file', ''))
-            logger.info(f"📋 Zapier parsed: email={result['email']}, contact={result['contact']}, bedrijf={result['bedrijf']}")
+
+            # Jotform sends q{n} or q{n}_{label} fields — scan all keys for vacancy text
+            if not result['vacature']:
+                vacancy_keywords = ['vacature', 'tekst', 'vacancy', 'description', 'omschrijving', 'jobdesc']
+                for k, v in webhook_data.items():
+                    k_lower = k.lower()
+                    v_str = str(v) if v else ''
+                    if any(kw in k_lower for kw in vacancy_keywords) and len(v_str) > 50:
+                        result['vacature'] = v_str
+                        logger.info(f"📋 Found vacature in Jotform field '{k}': {len(v_str)} chars")
+                        break
+
+            # Fallback: pick the longest text field (>100 chars) as vacature
+            if not result['vacature']:
+                longest = max(
+                    ((k, str(v)) for k, v in webhook_data.items() if v and len(str(v)) > 100),
+                    key=lambda x: len(x[1]),
+                    default=(None, '')
+                )
+                if longest[0]:
+                    result['vacature'] = longest[1]
+                    logger.info(f"📋 Fallback: using longest field '{longest[0]}' as vacature ({len(longest[1])} chars)")
+
+            # Extract functie from vacature first line if not set
+            if result['vacature'] and result['functie'] == 'vacature':
+                result['functie'] = result['vacature'].split('\n')[0][:50]
+
+            logger.info(f"📋 Parsed: email={result['email']}, bedrijf={result['bedrijf']}, vacature_len={len(result['vacature'])}")
             return result
 
         # ============================================
@@ -1160,8 +1187,14 @@ def typeform_webhook():
         return jsonify({"error": "Invalid signature"}), 401
 
     try:
-        data = request.get_json(force=True, silent=True) or {}
-        logger.info(f"📥 Keys: {list(data.keys())}")
+        data = request.get_json(force=True, silent=True)
+        if data is None:
+            # Jotform sends application/x-www-form-urlencoded
+            data = request.form.to_dict(flat=True)
+            logger.info(f"📥 URL-encoded keys: {list(data.keys())}")
+        else:
+            logger.info(f"📥 JSON keys: {list(data.keys())}")
+        data = data or {}
 
         # Parse the data
         p = parse_typeform_data(data)
