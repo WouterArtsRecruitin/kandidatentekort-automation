@@ -1100,7 +1100,15 @@ def retry_with_backoff(func, max_retries=3, backoff_seconds=2):
 
 
 def verify_jotform_signature(request_obj):
-    """Verify Jotform webhook signature (SECURITY FIX)"""
+    """Verify Jotform webhook signature (SECURITY FIX)
+
+    For testing/development: Set TEST_MODE=1 to bypass signature verification
+    """
+    # TESTING MODE: Allow bypassing signature check for development
+    if os.getenv('TEST_MODE') == '1':
+        logger.info("⚠️  TEST_MODE enabled - skipping signature verification")
+        return True
+
     signature = request_obj.headers.get('X-Jotform-Signature')
 
     if not signature:
