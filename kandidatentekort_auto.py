@@ -291,76 +291,18 @@ def analyze_vacancy_with_claude(vacature_text, bedrijf, sector=""):
         logger.error("❌ ANTHROPIC_API_KEY not set!")
         return None
 
-    prompt = f"""Je bent een expert recruitment analyst gespecialiseerd in de Nederlandse arbeidsmarkt. Analyseer deze vacaturetekst diepgaand en genereer een strategisch verbeterplan.
+    prompt = f"""Analyse this Dutch job posting briefly. Return ONLY valid JSON.
 
-## VACATURETEKST OM TE ANALYSEREN:
-
-{vacature_text}
-
-## CONTEXT:
-- Bedrijf: {bedrijf}
-- Sector: {sector if sector else 'Niet opgegeven'}
-
-## JOUW OPDRACHT:
-
-Analyseer deze vacaturetekst uitgebreid en lever het volgende in EXACT dit JSON format:
+Vacancy: {vacatura_text[:1000]}
+Company: {bedrijf}
 
 {{
-    "overall_score": 6.4,
-    "samenvatting": "Korte samenvatting van score en kritieke bevindingen (max 2 zinnen)",
-    "categories": [
-        {{"name": "Vacaturetitel & Vindbaarheid", "score": 75, "status": "ok"}},
-        {{"name": "Functieomschrijving", "score": 70, "status": "ok"}},
-        {{"name": "Salaris & Arbeidsvoorwaarden", "score": 35, "status": "bad"}},
-        {{"name": "Employer Branding", "score": 40, "status": "bad"}},
-        {{"name": "Kandidaat Experience", "score": 65, "status": "warning"}},
-        {{"name": "Kanaalstrategie", "score": 55, "status": "warning"}},
-        {{"name": "Concurrentiekracht", "score": 50, "status": "warning"}},
-        {{"name": "SEO & Online Vindbaarheid", "score": 80, "status": "ok"}}
-    ],
-    "score_section": "Vacaturetitel: 7/10 - Functieomschrijving: 6/10 - Salaris: 5/10 - Employer Branding: 8/10",
-    "market_analysis": {{
-        "competing_vacancies": 23,
-        "potential_candidates": 142,
-        "market_median_salary": "€4.800",
-        "supply_demand_ratio": "3.2x"
-    }},
-    "salary_benchmark": {{
-        "offered_range": "€4.200 - €5.500",
-        "market_range": "€4.800 - €6.200",
-        "difference": "-12% onder markt",
-        "warning": "⚠ Salaris ligt onder marktgemiddelde — dit verlaagt respons met ~25%"
-    }},
-    "top_3_improvements": [
-        "Eerste concrete verbetering",
-        "Tweede concrete verbetering",
-        "Derde concrete verbetering"
-    ],
-    "improved_text": "De volledige verbeterde vacaturetekst hier (400-600 woorden, pakkende opening, duidelijke functie-inhoud, concrete arbeidsvoorwaarden, sterke employer branding, overtuigende call-to-action)",
-    "action_items": [
-        "Actie 1: ...",
-        "Actie 2: ...",
-        "Actie 3: ...",
-        "Actie 4: ...",
-        "Actie 5: ..."
-    ],
-    "recommended_channels": [
-        {{"name": "Indeed", "description": "Grootste bereik, €0.50/klik", "status": "ACTIEF"}},
-        {{"name": "LinkedIn Jobs", "description": "Gericht op ervaren professionals", "status": "TOEVOEGEN"}},
-        {{"name": "Niche site", "description": "Sector-specifiek", "status": "TOEVOEGEN"}}
-    ],
-    "bonus_tips": [
-        "Eerste bonus tip voor de recruiter",
-        "Tweede bonus tip"
-    ]
-}}
-
-BELANGRIJK:
-- Antwoord ALLEEN met valid JSON
-- Categories: status is "ok" (score 60+), "warning" (40-59), of "bad" (< 40)
-- Scores zijn altijd 0-100 integers
-- Salaris metrics baseer op marktanalyse voor sector/regio
-- Geen tekst voor of na JSON"""
+    "overall_score": 7,
+    "score_section": "Title: 8/10 - Description: 7/10 - Salary: 6/10 - Branding: 7/10",
+    "top_3_improvements": ["Improve salary clarity", "Add company culture", "Stronger CTA"],
+    "improved_text": "Improved version of the vacancy (keep original tone, add salary clarity, employer branding)",
+    "bonus_tips": ["Use job board X", "Post on LinkedIn"]
+}}"""
 
     try:
         logger.info("🤖 Starting Claude analysis...")
@@ -1180,6 +1122,78 @@ def verify_jotform_signature(request_obj):
         return False
 
 
+def process_vacancy_analysis(p, vacancy_text):
+    """
+    Background task: Extract file, run Claude analysis, send email, create Pipedrive records
+    This runs in a separate thread to avoid webhook timeout
+    """
+    try:
+        logger.info(f"🔄 Background task started for {p['email']}")
+
+        # Get vacancy text - prefer file upload over text field
+        final_text = vacancy_text
+
+        # Try to extract text from uploaded file (PDF, DOCX, DOC)
+        if p['file_url']:
+            logger.info(f"📎 File uploaded, attempting extraction...")
+            extracted_text = extract_text_from_file(p['file_url'])
+            if extracted_text and len(extracted_text) > 50:
+                logger.info(f"✅ Using extracted file text ({len(extracted_text)} chars)")
+                final_text = extracted_text
+            else:
+                logger.info(f"⚠️ File extraction failed or empty, using text field")
+
+        # Run Claude analysis if we have vacancy text (with retry logic)
+        analysis = None
+        analysis_sent = False
+        if final_text and len(final_text) > 50:
+            try:
+                # RETRY FIX: Use exponential backoff for Claude API
+                analysis = retry_with_backoff(
+                    lambda: analyze_vacancy_with_claude(final_text, p['bedrijf'], p['sector']),
+                    max_retries=3,
+                    backoff_seconds=2
+                )
+                if analysis:
+                    try:
+                        analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], p['functie'], analysis, final_text)
+                        logger.info(f"✅ Analysis email sent to {p['email']}")
+                    except Exception as email_error:
+                        logger.error(f"❌ send_analysis_email failed: {email_error}", exc_info=True)
+                        analysis_sent = False
+            except Exception as e:
+                logger.error(f"❌ Claude analysis failed even with retries: {e}")
+
+        # Build analysis summary for Pipedrive notes
+        analysis_summary = ""
+        if analysis:
+            analysis_summary = f"""SCORE: {analysis.get('overall_score', 'N/A')}/10
+{analysis.get('score_section', '')}
+
+TOP 3 VERBETERPUNTEN:
+{chr(10).join(['- ' + imp for imp in analysis.get('top_3_improvements', [])])}
+
+VERBETERDE TEKST:
+{analysis.get('improved_text', '')[:1500]}"""
+
+        # Create Pipedrive records (organization first with dedup, then person, then deal)
+        org_id = get_or_create_organization(p['bedrijf'])
+        person_id = create_pipedrive_person(p['contact'], p['email'], p['telefoon'], org_id)
+        deal_id = create_pipedrive_deal(
+            f"Vacature Analyse - {p['functie']} - {p['bedrijf']}",
+            person_id,
+            org_id,
+            final_text,
+            p['file_url'],
+            analysis_summary
+        )
+
+        logger.info(f"✅ Background task complete: org={org_id}, person={person_id}, deal={deal_id}, analysis_sent={analysis_sent}")
+
+    except Exception as e:
+        logger.error(f"❌ Background task failed: {e}", exc_info=True)
+
+
 @app.route("/webhook/typeform", methods=["POST"])
 def typeform_webhook():
     logger.info("🎯 WEBHOOK RECEIVED")
@@ -1207,7 +1221,7 @@ def typeform_webhook():
             logger.error(f"❌ No email found in: {p}")
             return jsonify({"error": "No email", "parsed": p}), 400
 
-        # Send confirmation email immediately
+        # Send confirmation email immediately (fast)
         confirmation_sent = send_confirmation_email(
             p['email'],
             p['voornaam'],
@@ -1215,74 +1229,25 @@ def typeform_webhook():
             p['functie']
         )
 
-        # Get vacancy text - prefer file upload over text field
+        # Get vacancy text
         vacancy_text = p['vacature']
 
-        # Try to extract text from uploaded file (PDF, DOCX, DOC)
-        if p['file_url']:
-            logger.info(f"📎 File uploaded, attempting extraction...")
-            extracted_text = extract_text_from_file(p['file_url'])
-            if extracted_text and len(extracted_text) > 50:
-                logger.info(f"✅ Using extracted file text ({len(extracted_text)} chars)")
-                vacancy_text = extracted_text
-            else:
-                logger.info(f"⚠️ File extraction failed or empty, using text field")
-
-        # Run Claude analysis if we have vacancy text (with retry logic)
-        analysis = None
-        analysis_sent = False
-        if vacancy_text and len(vacancy_text) > 50:
-            try:
-                # RETRY FIX: Use exponential backoff for Claude API
-                analysis = retry_with_backoff(
-                    lambda: analyze_vacancy_with_claude(vacancy_text, p['bedrijf'], p['sector']),
-                    max_retries=3,
-                    backoff_seconds=2
-                )
-                if analysis:
-                    try:
-                        analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], p['functie'], analysis, vacancy_text)
-                    except Exception as email_error:
-                        logger.error(f"❌ send_analysis_email failed: {email_error}", exc_info=True)
-                        analysis_sent = False
-                        # Continue - confirmation email already sent
-            except Exception as e:
-                logger.error(f"❌ Claude analysis failed even with retries: {e}")
-                # Continue without analysis - confirmation email still sent
-
-        # Build analysis summary for Pipedrive notes
-        analysis_summary = ""
-        if analysis:
-            analysis_summary = f"""SCORE: {analysis.get('overall_score', 'N/A')}/10
-{analysis.get('score_section', '')}
-
-TOP 3 VERBETERPUNTEN:
-{chr(10).join(['- ' + imp for imp in analysis.get('top_3_improvements', [])])}
-
-VERBETERDE TEKST:
-{analysis.get('improved_text', '')[:1500]}"""
-
-        # Create Pipedrive records (organization first with dedup, then person, then deal)
-        org_id = get_or_create_organization(p['bedrijf'])  # DEDUP FIX: Use get_or_create instead
-        person_id = create_pipedrive_person(p['contact'], p['email'], p['telefoon'], org_id)
-        deal_id = create_pipedrive_deal(
-            f"Vacature Analyse - {p['functie']} - {p['bedrijf']}",
-            person_id,
-            org_id,
-            vacancy_text,  # Use extracted text if available
-            p['file_url'],
-            analysis_summary
+        # Queue background task to run asynchronously
+        # This avoids webhook timeout (webhook can take 60+ seconds for Claude API)
+        bg_thread = threading.Thread(
+            target=process_vacancy_analysis,
+            args=(p, vacancy_text),
+            daemon=True
         )
+        bg_thread.start()
 
-        logger.info(f"✅ Done: confirmation={confirmation_sent}, analysis={analysis_sent}, org={org_id}, person={person_id}, deal={deal_id}")
+        # Return immediately with 200 OK
+        logger.info(f"✅ Webhook accepted, background processing started")
 
         return jsonify({
             "success": True,
             "confirmation_sent": confirmation_sent,
-            "analysis_sent": analysis_sent,
-            "org_id": org_id,
-            "person_id": person_id,
-            "deal_id": deal_id
+            "message": "Background processing started - analysis email will be sent shortly"
         }), 200
 
     except Exception as e:
