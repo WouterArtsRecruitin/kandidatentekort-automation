@@ -1262,6 +1262,42 @@ def test_email():
     return jsonify({"success": ok, "to": to}), 200 if ok else 500
 
 
+@app.route("/test-async", methods=["POST"])
+def test_async():
+    """Test webhook WITHOUT signature verification - for testing async flow"""
+    logger.info("🧪 TEST ASYNC WEBHOOK RECEIVED")
+
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        p = parse_typeform_data(data)
+
+        if not p['email'] or '@' not in p['email']:
+            return jsonify({"error": "No email"}), 400
+
+        logger.info(f"✅ Test webhook accepted for {p['email']}")
+
+        # Send confirmation immediately
+        send_confirmation_email(p['email'], p['voornaam'], p['bedrijf'], p['functie'])
+
+        # Queue background task
+        bg_thread = threading.Thread(
+            target=process_vacancy_analysis,
+            args=(p, p['vacature']),
+            daemon=True
+        )
+        bg_thread.start()
+
+        return jsonify({
+            "success": True,
+            "message": "Background processing started",
+            "parsed": {"email": p['email'], "bedrijf": p['bedrijf'], "functie": p['functie']}
+        }), 200
+
+    except Exception as e:
+        logger.error(f"❌ Error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/debug", methods=["POST"])
 def debug_webhook():
     """Debug endpoint - returns what was received"""
