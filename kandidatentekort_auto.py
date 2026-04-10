@@ -29,14 +29,18 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, jsonify
 
+# Setup logging FIRST before any logger usage
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 # Report generator (V5.2: Figma report templates)
 try:
     from generator.report_builder import build_hosted_rapport, build_email_summary
     from generator.storage_uploader import upload_rapport
     REPORT_BUILDER_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     REPORT_BUILDER_AVAILABLE = False
-    logger = logging.getLogger(__name__)
+    logger.warning(f"⚠️ Report builder not available: {e}")
 
 # PDF and DOCX extraction
 try:
@@ -50,9 +54,6 @@ try:
     DOCX_AVAILABLE = True
 except ImportError:
     DOCX_AVAILABLE = False
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
