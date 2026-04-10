@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V5.1
-Deploy: Render.com | Updated: 2025-11-28
+KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V5.2
+Deploy: Render.com | Updated: 2026-04-10
 - V2: Pipedrive organization, person, deal creation
 - V3: Claude AI vacancy analysis + report email
 - V3.1: Professional report template with Before/After comparison
