@@ -976,6 +976,71 @@ def parse_typeform_data(webhook_data):
     return result
 
 
+# ============================================================================
+# LEMLIST — Automatisch lead toevoegen aan email campagne
+# ============================================================================
+
+def add_lead_to_lemlist(p: dict, analysis: dict, rapport_url: str = "") -> bool:
+    """
+    Voeg een lead toe aan de Lemlist email campagne na vacature-analyse.
+    Vult alle custom variabelen in die de 4 email templates gebruiken.
+    Returnt True bij succes, False bij mislukking of als API key ontbreekt.
+    """
+    if not LEMLIST_API_KEY or not LEMLIST_CAMPAIGN_ID:
+        logger.warning("⚠️ Lemlist skip: LEMLIST_API_KEY of LEMLIST_CAMPAIGN_ID niet ingesteld")
+        return False
+
+    email = p.get('email', '')
+    if not email or '@' not in email:
+        logger.error("❌ Lemlist: geen geldig emailadres")
+        return False
+
+    try:
+        improvements = analysis.get('top_3_improvements', [])
+        market = analysis.get('market_analysis', {})
+        salary = analysis.get('salary_benchmark', {})
+
+        lead_data = {
+            # Standaard Lemlist velden
+            "firstName": p.get('voornaam', ''),
+            "companyName": p.get('bedrijf', ''),
+            # Custom variabelen voor de 4 email templates
+            "functie": p.get('functie', ''),
+            "score": str(analysis.get('overall_score', '')),
+            "rapportUrl": rapport_url,
+            "topImprovement1": improvements[0] if len(improvements) > 0 else '',
+            "topImprovement2": improvements[1] if len(improvements) > 1 else '',
+            "topImprovement3": improvements[2] if len(improvements) > 2 else '',
+            "improvedText": analysis.get('improved_text', '')[:2000],  # Lemlist max
+            "marketCompeting": str(market.get('competing_vacancies', '')),
+            "marketCandidates": str(market.get('potential_candidates', '')),
+            "salaryWarning": salary.get('warning', salary.get('difference', '')),
+        }
+
+        url = f"https://api.lemlist.com/api/campaigns/{LEMLIST_CAMPAIGN_ID}/leads/{email}"
+        response = requests.post(
+            url,
+            auth=('', LEMLIST_API_KEY),
+            json=lead_data,
+            timeout=15
+        )
+
+        if response.status_code in (200, 201):
+            logger.info(f"✅ Lemlist: lead {email} toegevoegd aan campagne {LEMLIST_CAMPAIGN_ID}")
+            return True
+        elif response.status_code == 409:
+            # Lead bestaat al in deze campagne
+            logger.info(f"ℹ️ Lemlist: lead {email} stond al in campagne (409)")
+            return True
+        else:
+            logger.error(f"❌ Lemlist API fout: {response.status_code} — {response.text[:200]}")
+            return False
+
+    except Exception as e:
+        logger.error(f"❌ Lemlist integratie mislukt: {e}")
+        return False
+
+
 def create_pipedrive_organization(name):
     """Create organization in Pipedrive"""
     if not PIPEDRIVE_API_TOKEN or not name or name == 'Onbekend':
@@ -1278,7 +1343,12 @@ VERBETERDE TEKST:
             storage_prefix
         )
 
-        logger.info(f"✅ Background task complete: org={org_id}, person={person_id}, deal={deal_id}, analysis_sent={analysis_sent}")
+        # Add lead to Lemlist email sequence (only when analysis succeeded)
+        lemlist_ok = False
+        if analysis:
+            lemlist_ok = add_lead_to_lemlist(p, analysis, rapport_url)
+
+        logger.info(f"✅ Background task complete: org={org_id}, person={person_id}, deal={deal_id}, analysis_sent={analysis_sent}, lemlist={lemlist_ok}")
 
     except Exception as e:
         logger.error(f"❌ Background task failed: {e}", exc_info=True)
