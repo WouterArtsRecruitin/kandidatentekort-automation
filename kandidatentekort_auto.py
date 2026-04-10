@@ -15,6 +15,7 @@ Deploy: Render.com | Updated: 2026-04-10
 
 import os
 import io
+import re
 import json
 import logging
 import smtplib
@@ -28,6 +29,7 @@ from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, jsonify
+from markupsafe import escape as html_escape
 
 # Setup logging FIRST before any logger usage
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -69,6 +71,7 @@ GMAIL_APP_PASSWORD = os.getenv('GMAIL_APP_PASSWORD') or os.getenv('GMAIL_PASS')
 PIPEDRIVE_BASE = "https://api.pipedrive.com/v1"
 PIPELINE_ID = 4
 STAGE_ID = 21
+ADMIN_SECRET = os.getenv('ADMIN_SECRET', '')  # Required for test/debug/nurture endpoints
 
 # Email Nurture Custom Field Keys (from Pipedrive)
 FIELD_RAPPORT_VERZONDEN = "337f9ccca15334e6e4f937ca5ef0055f13ed0c63"
@@ -1309,8 +1312,18 @@ def typeform_webhook():
         return jsonify({"error": str(e)}), 500
 
 
+def _check_admin_secret():
+    """Verify admin secret header for protected endpoints."""
+    secret = request.headers.get('X-Admin-Secret', '') or request.args.get('secret', '')
+    if not ADMIN_SECRET or secret != ADMIN_SECRET:
+        return False
+    return True
+
+
 @app.route("/test-email", methods=["GET"])
 def test_email():
+    if not _check_admin_secret():
+        return jsonify({"error": "Unauthorized"}), 401
     to = request.args.get('to', 'artsrecruitin@gmail.com')
     ok = send_confirmation_email(to, "Test", "Test Bedrijf", "Test Vacature")
     return jsonify({"success": ok, "to": to}), 200 if ok else 500
@@ -1318,7 +1331,9 @@ def test_email():
 
 @app.route("/test-async", methods=["POST"])
 def test_async():
-    """Test webhook WITHOUT signature verification - for testing async flow"""
+    """Test webhook WITHOUT signature verification - requires admin secret"""
+    if not _check_admin_secret():
+        return jsonify({"error": "Unauthorized"}), 401
     logger.info("🧪 TEST ASYNC WEBHOOK RECEIVED")
 
     try:
@@ -1355,6 +1370,8 @@ def test_async():
 @app.route("/test-pipeline", methods=["GET"])
 def test_pipeline():
     """Debug: test report builder + Supabase upload (no Claude, instant)."""
+    if not _check_admin_secret():
+        return jsonify({"error": "Unauthorized"}), 401
     results = {
         "report_builder": REPORT_BUILDER_AVAILABLE,
         "supabase_url": bool(os.getenv("SUPABASE_URL")),
@@ -1397,12 +1414,13 @@ def test_pipeline():
 @app.route("/debug", methods=["POST"])
 def debug_webhook():
     """Debug endpoint - returns what was received"""
+    if not _check_admin_secret():
+        return jsonify({"error": "Unauthorized"}), 401
     data = request.get_json(force=True, silent=True) or {}
     parsed = parse_typeform_data(data)
     return jsonify({
         "received_keys": list(data.keys()),
         "parsed": parsed,
-        "raw_answers": data.get('form_response', {}).get('answers', [])
     }), 200
 
 
@@ -1948,6 +1966,10 @@ def serve_rapport():
     if not path:
         return "Missing 'path' parameter", 400
 
+    # SECURITY: Validate path to prevent traversal attacks
+    if not re.match(r'^\d{8}/[a-zA-Z0-9_\-]+/rapport\.html$', path):
+        return "Invalid path format", 400
+
     supabase_url = os.getenv("SUPABASE_URL", "")
     supabase_key = os.getenv("SUPABASE_SERVICE_KEY", "")
     if not supabase_url or not supabase_key:
@@ -1961,10 +1983,10 @@ def serve_rapport():
         if resp.status_code == 200:
             return resp.content, 200, {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=3600"}
         else:
-            logger.error(f"❌ Rapport fetch failed: {resp.status_code}")
+            logger.error(f"Rapport fetch failed: {resp.status_code}")
             return "Rapport niet gevonden", 404
     except Exception as e:
-        logger.error(f"❌ Rapport proxy error: {e}")
+        logger.error(f"Rapport proxy error: {e}")
         return "Fout bij ophalen rapport", 500
 
 
@@ -1984,16 +2006,17 @@ def health_check():
 @app.route("/nurture/process", methods=["POST"])
 def trigger_nurture_processing():
     """Manually trigger nurture email processing"""
+    if not _check_admin_secret():
+        return jsonify({"error": "Unauthorized"}), 401
     count = process_nurture_emails()
-    return jsonify({
-        "success": True,
-        "emails_sent": count
-    }), 200
+    return jsonify({"success": True, "emails_sent": count}), 200
 
 
 @app.route("/nurture/start/<int:deal_id>", methods=["POST"])
 def start_nurture_for_deal(deal_id):
     """Start nurture sequence for a specific deal"""
+    if not _check_admin_secret():
+        return jsonify({"error": "Unauthorized"}), 401
     success = start_nurture_deal(deal_id)
     return jsonify({"success": success, "deal_id": deal_id}), 200 if success else 500
 
@@ -2001,26 +2024,22 @@ def start_nurture_for_deal(deal_id):
 @app.route("/nurture/status", methods=["GET"])
 def nurture_status():
     """Get status of nurture sequences"""
+    if not _check_admin_secret():
+        return jsonify({"error": "Unauthorized"}), 401
     deals = get_deals_for_nurture()
-    return jsonify({
-        "pending_emails": len(deals),
-        "deals": deals[:20]  # Limit response
-    }), 200
+    return jsonify({"pending_emails": len(deals), "deals": deals[:20]}), 200
 
 
 @app.route("/nurture/test/<int:email_num>", methods=["GET"])
 def test_nurture_email(email_num):
     """Send a test nurture email"""
+    if not _check_admin_secret():
+        return jsonify({"error": "Unauthorized"}), 401
     to = request.args.get('to', 'warts@recruitin.nl')
     voornaam = request.args.get('name', 'Test')
     functie = request.args.get('functie', 'Senior Developer')
-
     success = send_nurture_email(to, email_num, voornaam, functie)
-    return jsonify({
-        "success": success,
-        "email_num": email_num,
-        "to": to
-    }), 200 if success else 500
+    return jsonify({"success": success, "email_num": email_num, "to": to}), 200 if success else 500
 
 
 if __name__ == "__main__":

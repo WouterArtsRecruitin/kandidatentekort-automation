@@ -22,14 +22,15 @@ Go to Render Dashboard → Select `kandidatentekort-automation` service → Envi
 
 Add these variables:
 
-| Variable | Value | Where to Find |
-|----------|-------|---------------|
-| `ANTHROPIC_API_KEY` | sk-ant-... | Dashboard → Claude API keys |
-| `PIPEDRIVE_API_TOKEN` | 57720aa8... | Pipedrive → Settings → Personal Preferences → API tokens |
-| `JOTFORM_WEBHOOK_SECRET` | REMOVED_JOTFORM_SECRET | Jotform → Settings → API section (your API key) |
-| `GMAIL_USER` | wouter.arts@recruitin.nl | Your Gmail email |
-| `GMAIL_APP_PASSWORD` | REMOVED_GMAIL_APP_PASSWORD | Google Account → App passwords |
-| `PORT` | 10000 | (Pre-configured in render.yaml) |
+| Variable | Where to Find |
+|----------|---------------|
+| `ANTHROPIC_API_KEY` | Dashboard → Claude API keys |
+| `PIPEDRIVE_API_TOKEN` | Pipedrive → Settings → Personal Preferences → API tokens |
+| `JOTFORM_WEBHOOK_SECRET` | Jotform → Settings → API section (your API key) |
+| `GMAIL_USER` | Your Gmail email |
+| `GMAIL_APP_PASSWORD` | Google Account → App passwords |
+| `ADMIN_SECRET` | Generate: `python3 -c "import secrets; print(secrets.token_hex(32))"` |
+| `PORT` | 10000 (Pre-configured in render.yaml) |
 
 **Critical:** All 6 variables must be set or webhook will fail with 401/500 errors.
 

@@ -8,11 +8,15 @@ import re
 import sys
 from datetime import datetime
 
-from jinja2 import Environment, FileSystemLoader
+from markupsafe import Markup
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-# Jinja2 environment
+# Jinja2 environment — autoescape ON to prevent XSS from user-submitted form data
 _TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
-_jinja_env = Environment(loader=FileSystemLoader(_TEMPLATE_DIR), autoescape=False)
+_jinja_env = Environment(
+    loader=FileSystemLoader(_TEMPLATE_DIR),
+    autoescape=select_autoescape(default=True, default_for_string=True),
+)
 _jinja_env.globals["enumerate"] = enumerate
 
 
@@ -60,7 +64,7 @@ def build_hosted_rapport(analysis: dict, bedrijf: str, functie: str) -> str:
         categories=categories,
         market_analysis=market_analysis,
         salary_benchmark=salary_benchmark,
-        improved_text=improved_text.replace("\n", "<br>") if improved_text else "",
+        improved_text=Markup(Markup.escape(improved_text).replace("\n", "<br>")) if improved_text else "",
         action_items=action_items,
         recommended_channels=recommended_channels,
         date=datetime.now().strftime("%d %B %Y"),
