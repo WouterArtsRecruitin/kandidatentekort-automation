@@ -1352,6 +1352,41 @@ def test_async():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/test-pipeline", methods=["GET"])
+def test_pipeline():
+    """Debug: run Claude + report builder synchronously and return results."""
+    test_text = "Wij zoeken een Senior Developer met 5 jaar ervaring Python. Salaris: marktconform. Locatie: Amsterdam."
+    results = {"report_builder": REPORT_BUILDER_AVAILABLE}
+
+    # Step 1: Claude
+    try:
+        analysis = analyze_vacancy_with_claude(test_text, "Test BV", "IT")
+        results["claude_ok"] = analysis is not None
+        results["has_categories"] = bool(analysis and analysis.get("categories"))
+        results["score"] = analysis.get("overall_score") if analysis else None
+        results["keys"] = list(analysis.keys()) if analysis else []
+    except Exception as e:
+        results["claude_error"] = str(e)
+        return jsonify(results), 500
+
+    # Step 2: Report builder
+    if REPORT_BUILDER_AVAILABLE and analysis and analysis.get("categories"):
+        try:
+            html = build_hosted_rapport(analysis, "Test BV", "Senior Developer")
+            results["rapport_html_len"] = len(html)
+        except Exception as e:
+            results["rapport_error"] = str(e)
+
+        # Step 3: Upload
+        try:
+            url = upload_rapport(html, lead_name="test_pipeline")
+            results["rapport_url"] = url
+        except Exception as e:
+            results["upload_error"] = str(e)
+
+    return jsonify(results), 200
+
+
 @app.route("/debug", methods=["POST"])
 def debug_webhook():
     """Debug endpoint - returns what was received"""
