@@ -293,7 +293,7 @@ def analyze_vacancy_with_claude(vacature_text, bedrijf, sector=""):
 
     prompt = f"""Analyse this Dutch job posting briefly. Return ONLY valid JSON.
 
-Vacancy: {vacatura_text[:1000]}
+Vacancy: {vacature_text[:1000]}
 Company: {bedrijf}
 
 {{
