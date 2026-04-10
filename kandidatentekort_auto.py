@@ -1238,7 +1238,12 @@ def typeform_webhook():
                     backoff_seconds=2
                 )
                 if analysis:
-                    analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], p['functie'], analysis, vacancy_text)
+                    try:
+                        analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], p['functie'], analysis, vacancy_text)
+                    except Exception as email_error:
+                        logger.error(f"❌ send_analysis_email failed: {email_error}", exc_info=True)
+                        analysis_sent = False
+                        # Continue - confirmation email already sent
             except Exception as e:
                 logger.error(f"❌ Claude analysis failed even with retries: {e}")
                 # Continue without analysis - confirmation email still sent
