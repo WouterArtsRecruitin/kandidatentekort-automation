@@ -13,6 +13,7 @@ from jinja2 import Environment, FileSystemLoader
 # Jinja2 environment
 _TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 _jinja_env = Environment(loader=FileSystemLoader(_TEMPLATE_DIR), autoescape=False)
+_jinja_env.globals["enumerate"] = enumerate
 
 
 def _score_color(score: int) -> str:
