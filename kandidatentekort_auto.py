@@ -424,22 +424,22 @@ def get_analysis_email_html(voornaam, bedrijf, analysis, original_text=""):
     improved_preview = improved_preview.replace('\n', '<br>')
     improved_text_html = improved_text.replace('\n', '<br>')
 
-    # Calculate score color and label based on score
+    # Calculate score color and label based on score (0-100 scale)
     if isinstance(score, (int, float)):
         score_num = float(score)
-        if score_num >= 8.0:
+        if score_num >= 75:
             score_color = "#10B981"
             score_bg = "#ECFDF5"
             score_border = "#10B981"
             score_label = "Uitstekend"
             score_emoji = "🏆"
-        elif score_num >= 6.5:
+        elif score_num >= 60:
             score_color = "#3B82F6"
             score_bg = "#EFF6FF"
             score_border = "#3B82F6"
             score_label = "Goed"
             score_emoji = "👍"
-        elif score_num >= 5.0:
+        elif score_num >= 45:
             score_color = "#F59E0B"
             score_bg = "#FFFBEB"
             score_border = "#F59E0B"
@@ -461,7 +461,6 @@ def get_analysis_email_html(voornaam, bedrijf, analysis, original_text=""):
     # Parse score_section into categories - OUTLOOK COMPATIBLE
     categories_html = ""
     if score_section:
-        import re
         score_parts = re.findall(r'([A-Za-z-]+):\s*(\d+)/10', score_section)
         if score_parts:
             categories_html = '<table width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px;"><tr>'
@@ -1085,15 +1084,7 @@ def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="
 
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({
-        "status": "healthy",
-        "version": "5.3",
-        "features": ["typeform", "analysis", "nurture"],
-        "email": bool(GMAIL_APP_PASSWORD),
-        "pipedrive": bool(PIPEDRIVE_API_TOKEN),
-        "claude": bool(ANTHROPIC_API_KEY),
-        "typeform": bool(TYPEFORM_API_TOKEN)
-    }), 200
+    return jsonify({"status": "ok", "version": "5.3"}), 200
 
 
 def retry_with_backoff(func, max_retries=3, backoff_seconds=2):
@@ -1224,7 +1215,7 @@ def process_vacancy_analysis(p, vacancy_text):
         # Build analysis summary for Pipedrive notes
         analysis_summary = ""
         if analysis:
-            analysis_summary = f"""SCORE: {analysis.get('overall_score', 'N/A')}/10
+            analysis_summary = f"""SCORE: {analysis.get('overall_score', 'N/A')}/100
 {analysis.get('score_section', '')}
 
 TOP 3 VERBETERPUNTEN:
@@ -1721,7 +1712,7 @@ def get_deals_for_nurture():
             # Parse rapport date
             try:
                 rapport_date = datetime.strptime(rapport_date_str, '%Y-%m-%d').date()
-            except:
+            except (ValueError, TypeError):
                 continue
 
             days_since_rapport = (today - rapport_date).days
@@ -1731,7 +1722,7 @@ def get_deals_for_nurture():
             if laatste_email:
                 try:
                     current_email = int(laatste_email.replace('Email ', ''))
-                except:
+                except (ValueError, TypeError):
                     pass
 
             next_email = current_email + 1
@@ -1808,7 +1799,7 @@ def should_send_email(deal, email_num):
             try:
                 from dateutil import parser
                 rapport_dt = parser.parse(rapport_date)
-            except:
+            except (ImportError, ValueError):
                 rapport_dt = datetime.fromisoformat(rapport_date.split('T')[0])
 
             days_since = (datetime.now() - rapport_dt).days
