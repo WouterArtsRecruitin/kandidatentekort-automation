@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 REPORT_BUILDER_AVAILABLE = False
 try:
     from generator.report_builder import build_hosted_rapport, build_email_summary
-    from generator.storage_uploader import upload_rapport
+    from generator.storage_uploader import upload_rapport, upload_analysis_json, fetch_analysis_json
     REPORT_BUILDER_AVAILABLE = True
     logger.info("✅ Report builder loaded")
 except ImportError as e:
@@ -77,17 +77,20 @@ ADMIN_SECRET = os.getenv('ADMIN_SECRET', '')  # Required for test/debug/nurture 
 FIELD_RAPPORT_VERZONDEN = "337f9ccca15334e6e4f937ca5ef0055f13ed0c63"
 FIELD_EMAIL_SEQUENCE_STATUS = "22d33c7f119119e178f391a272739c571cf2e29b"
 FIELD_LAATSTE_EMAIL = "753f37a1abc8e161c7982c1379a306b21fae1bab"
+FIELD_ANALYSE_STORAGE_PREFIX = os.getenv("FIELD_ANALYSE_STORAGE_PREFIX", "")  # Pipedrive text field for Supabase path
 
 # Email sequence timing (days after rapport verzonden)
+# Emails 1-3: VALUE DRIP (verbeterde tekst → marktanalyse → kanaalstrategie)
+# Emails 4-8: TRUST-BUILDING (tips + check-ins)
 EMAIL_SCHEDULE = {
-    1: {"day": 1, "template_id": 55, "name": "Check-in"},
-    2: {"day": 3, "template_id": 56, "name": "Is het gelukt"},
-    3: {"day": 5, "template_id": 57, "name": "Resultaten"},
-    4: {"day": 8, "template_id": 58, "name": "Tip Functietitel"},
-    5: {"day": 11, "template_id": 59, "name": "Tip Salaris"},
-    6: {"day": 14, "template_id": 60, "name": "Tip Opening"},
-    7: {"day": 21, "template_id": 61, "name": "Gesprek Aanbod"},
-    8: {"day": 30, "template_id": 62, "name": "Final Check-in"},
+    1: {"day": 1, "name": "Drip: Verbeterde Vacaturetekst"},
+    2: {"day": 3, "name": "Drip: Marktanalyse + Salaris"},
+    3: {"day": 5, "name": "Drip: Kanaalstrategie + Actieplan"},
+    4: {"day": 8, "name": "Tip Functietitel"},
+    5: {"day": 11, "name": "Tip Salaris"},
+    6: {"day": 14, "name": "Tip Opening"},
+    7: {"day": 21, "name": "Gesprek Aanbod"},
+    8: {"day": 30, "name": "Final Check-in"},
 }
 
 # Stage filter: Only send nurture emails to deals in stage 21 (Gekwalificeerd)
@@ -293,16 +296,21 @@ def analyze_vacancy_with_claude(vacature_text, bedrijf, sector=""):
         logger.error("❌ ANTHROPIC_API_KEY not set!")
         return None
 
-    prompt = f"""Analyseer deze Nederlandse vacaturetekst grondig. Return ONLY valid JSON, geen extra tekst.
+    prompt = f"""Je bent een senior recruitment copywriter met 15+ jaar ervaring in technische en industriële vacatures in Nederland. Analyseer deze vacaturetekst grondig en herschrijf hem zodat hij MEER sollicitaties oplevert.
 
-Vacature: {vacature_text[:2000]}
+Return ONLY valid JSON, geen extra tekst.
+
+=== VACATURETEKST ===
+{vacature_text[:3000]}
+
+=== CONTEXT ===
 Bedrijf: {bedrijf}
 Sector: {sector or 'onbekend'}
 
-Geef een JSON object met EXACT deze structuur:
+=== JSON STRUCTUUR (volg EXACT) ===
 {{
     "overall_score": 64,
-    "samenvatting": "Korte samenvatting van de analyse in 2-3 zinnen. Benoem de score, sterkste punt en belangrijkste verbeterpunt.",
+    "samenvatting": "Directe samenvatting in 2-3 zinnen. Noem de score, het sterkste punt, en het kritiekste verbeterpunt met concrete impact (bijv. 'Door het ontbreken van salarisindicatie mis je ~35% potentiële sollicitanten').",
     "score_section": "Titel: 7/10 - Omschrijving: 7/10 - Salaris: 4/10 - Branding: 5/10",
     "categories": [
         {{"name": "Vacaturetitel & Vindbaarheid", "score": 75, "status": "ok"}},
@@ -326,22 +334,42 @@ Geef een JSON object met EXACT deze structuur:
         "difference": "-12% onder markt",
         "warning": "Salaris ligt onder marktgemiddelde"
     }},
-    "top_3_improvements": ["Verbetering 1", "Verbetering 2", "Verbetering 3"],
-    "improved_text": "Volledige herschreven vacaturetekst in het Nederlands. Behoud de originele toon maar verbeter: salaristransparantie, employer branding, concrete USPs, duidelijke CTA.",
-    "action_items": ["Actie 1", "Actie 2", "Actie 3", "Actie 4", "Actie 5"],
+    "top_3_improvements": ["Concrete verbetering met verwachte impact", "...", "..."],
+    "improved_text": "Volledige herschreven vacaturetekst — zie instructies hieronder",
+    "action_items": ["Concrete, uitvoerbare actie met deadline-suggestie", "...", "...", "...", "..."],
     "recommended_channels": [
-        {{"name": "Indeed", "description": "Grootste bereik voor deze functie", "status": "AANBEVOLEN"}},
-        {{"name": "LinkedIn Jobs", "description": "Gericht op ervaren professionals", "status": "AANBEVOLEN"}}
+        {{"name": "Indeed", "description": "Bereik X kandidaten in deze regio/sector", "status": "AANBEVOLEN"}},
+        {{"name": "LinkedIn Jobs", "description": "Gericht op ervaren professionals in {sector or 'deze sector'}", "status": "AANBEVOLEN"}}
     ],
-    "bonus_tips": ["Tip 1", "Tip 2"]
+    "bonus_tips": ["Sectorspecifieke tip", "Tip op basis van huidige arbeidsmarkt"]
 }}
 
-BELANGRIJK:
-- Scores zijn 0-100 (niet 0-10). overall_score is het gemiddelde van de 8 categorieën.
-- status: "ok" (score>=65), "warning" (score 45-64), "bad" (score<45)
-- market_analysis: schat realistisch in op basis van sector en functie
-- salary_benchmark: als geen salaris vermeld, schat in op basis van functie/sector
-- improved_text: volledige herschreven tekst, minimaal 200 woorden
+=== INSTRUCTIES VOOR improved_text ===
+Dit is het BELANGRIJKSTE veld. De herschreven tekst moet direct bruikbaar zijn.
+
+VERPLICHTE STRUCTUUR van improved_text:
+1. PAKKENDE OPENING (1-2 zinnen): Begin met een vraag of bold statement gericht aan de kandidaat. NOOIT beginnen met "Wij zoeken" of "Voor onze opdrachtgever".
+2. OVER DE ROL (3-5 bullet points): Wat ga je DOEN, niet wat je MOET KUNNEN. Gebruik actieve werkwoorden.
+3. WAT JE MEEBRENGT (3-5 bullet points): Harde eisen vs. nice-to-haves gescheiden.
+4. WAT JE KRIJGT (4-6 bullet points): Concreet — euro's, dagen, mogelijkheden. NOOIT "marktconform" of "passend salaris".
+5. OVER HET BEDRIJF (2-3 zinnen): Specifiek over {bedrijf} — omvang, cultuur, projecten. Gebruik info uit de originele tekst.
+6. SOLLICITEER-CTA (1-2 zinnen): Laagdrempelig, met naam contactpersoon als die in de tekst staat.
+
+STIJLREGELS voor improved_text:
+- BEHOUD de toon van het origineel (formeel bedrijf = formeel, informeel = informeel)
+- Gebruik SPECIFIEKE details uit de originele tekst (projecten, producten, klanten, tools)
+- Als de originele tekst geen salaris noemt: voeg een realistische indicatie toe op basis van functie/sector/regio
+- VERBODEN woorden/frases: "dynamisch team", "no-nonsense", "familiaire sfeer", "korte lijnen", "marktconform", "uitdagende functie", "enthousiaste collega's", "passend salaris"
+- Schrijf alsof je de kandidaat persoonlijk aanspreekt
+- Minimaal 250 woorden, maximaal 500 woorden
+
+=== SCORING REGELS ===
+- Scores 0-100. overall_score = gemiddelde van 8 categorieën
+- status: "ok" (>=65), "warning" (45-64), "bad" (<45)
+- Wees EERLIJK en KRITISCH. De meeste vacatures scoren 40-65. Score >75 alleen als de tekst écht bovengemiddeld is.
+- market_analysis: schat REALISTISCH in op basis van sector, functie, en Nederlandse arbeidsmarkt (niet te optimistisch)
+- salary_benchmark: als geen salaris vermeld, schat in op basis van functie/sector. Vermeld dit als warning.
+- action_items: 5 concrete stappen die de klant VANDAAG kan uitvoeren, in volgorde van impact
 - Alles in het Nederlands"""
 
     try:
@@ -355,7 +383,7 @@ BELANGRIJK:
             },
             json={
                 "model": "claude-sonnet-4-6",
-                "max_tokens": 4000,
+                "max_tokens": 6000,
                 "messages": [{"role": "user", "content": prompt}]
             },
             timeout=120
@@ -1032,7 +1060,7 @@ def create_pipedrive_person(contact, email, telefoon, org_id=None):
     return None
 
 
-def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="", analysis=""):
+def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="", analysis="", storage_prefix=""):
     if not PIPEDRIVE_API_TOKEN:
         return None
     try:
@@ -1044,6 +1072,9 @@ def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="
         }
         if org_id:
             deal_data["org_id"] = org_id
+        # Store Supabase storage prefix for nurture drip emails
+        if storage_prefix and FIELD_ANALYSE_STORAGE_PREFIX:
+            deal_data[FIELD_ANALYSE_STORAGE_PREFIX] = storage_prefix
 
         r = requests.post(
             f"{PIPEDRIVE_BASE}/deals",
@@ -1186,6 +1217,16 @@ def process_vacancy_analysis(p, vacancy_text):
                     backoff_seconds=2
                 )
                 if analysis:
+                    # Upload analysis JSON for nurture drip emails
+                    storage_prefix = ""
+                    try:
+                        if REPORT_BUILDER_AVAILABLE:
+                            storage_prefix = upload_analysis_json(analysis, p['bedrijf'])
+                            if storage_prefix:
+                                logger.info(f"📦 Analysis JSON uploaded: {storage_prefix}")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Analysis JSON upload failed: {e}")
+
                     try:
                         # Try hosted rapport + premium email first
                         if REPORT_BUILDER_AVAILABLE and analysis.get('categories'):
@@ -1233,7 +1274,8 @@ VERBETERDE TEKST:
             org_id,
             final_text,
             p['file_url'],
-            analysis_summary
+            analysis_summary,
+            storage_prefix
         )
 
         logger.info(f"✅ Background task complete: org={org_id}, person={person_id}, deal={deal_id}, analysis_sent={analysis_sent}")
@@ -1419,51 +1461,133 @@ def debug_webhook():
 # TRUST-FIRST EMAIL NURTURE SYSTEM V5.1
 # =============================================================================
 
-def get_nurture_email_html(email_num, voornaam, functie_titel):
-    """Generate HTML content for nurture emails"""
+def get_nurture_email_html(email_num, voornaam, functie_titel, analysis_data=None):
+    """Generate HTML content for nurture emails.
+
+    Emails 1-3 are VALUE DRIP emails that deliver analysis content:
+    - Email 1: Verbeterde vacaturetekst (the golden content)
+    - Email 2: Marktanalyse + salaris benchmark
+    - Email 3: Kanaalstrategie + actieplan
+    Emails 4-8 are trust-building tips and check-ins (unchanged).
+    """
+    ad = analysis_data or {}
+
+    # Email 1: VERBETERDE VACATURETEKST
+    improved_text = ad.get('improved_text', '')
+    improved_html = improved_text.replace('\n', '<br>') if improved_text else ''
+    top_improvements = ad.get('top_3_improvements', [])
+    improvements_list = ''.join(f'<li style="margin-bottom:8px;">{imp}</li>' for imp in top_improvements) if top_improvements else ''
+
+    # Email 2: MARKTANALYSE + SALARIS
+    ma = ad.get('market_analysis', {})
+    sb = ad.get('salary_benchmark', {})
+
+    # Email 3: KANAALSTRATEGIE + ACTIEPLAN
+    channels = ad.get('recommended_channels', [])
+    channels_html = ''.join(
+        f'<tr><td style="padding:10px;border-bottom:1px solid #eee;font-weight:bold;color:#1f2937;">{ch.get("name","")}</td>'
+        f'<td style="padding:10px;border-bottom:1px solid #eee;color:#6b7280;">{ch.get("description","")}</td>'
+        f'<td style="padding:10px;border-bottom:1px solid #eee;"><span style="background:#dcfce7;color:#166534;padding:3px 8px;border-radius:3px;font-size:11px;font-weight:bold;">{ch.get("status","")}</span></td></tr>'
+        for ch in channels
+    ) if channels else ''
+    action_items = ad.get('action_items', [])
+    actions_html = ''.join(
+        f'<tr><td style="padding:10px 0;border-bottom:1px solid #f3f4f6;">'
+        f'<table cellpadding="0" cellspacing="0"><tr>'
+        f'<td style="width:28px;height:28px;background:#f59e0b;color:white;text-align:center;font-weight:bold;font-size:13px;line-height:28px;border-radius:50%;">{i+1}</td>'
+        f'<td style="padding-left:12px;color:#1f2937;font-size:14px;">{item}</td>'
+        f'</tr></table></td></tr>'
+        for i, item in enumerate(action_items)
+    ) if action_items else ''
 
     templates = {
         1: f"""<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333333;">
 <p>Hoi {voornaam},</p>
-<p>Gisteren stuurde ik je de geoptimaliseerde versie van je vacature voor <strong>{functie_titel}</strong>.</p>
-<p>Even een snelle check: is alles goed aangekomen?</p>
-<p>Als je vragen hebt over de analyse of tips - reply gerust op deze mail. Ik help je graag verder.</p>
+<p>Gisteren ontving je de score-analyse van je vacature voor <strong>{functie_titel}</strong>. Vandaag het belangrijkste onderdeel: <strong>de verbeterde vacaturetekst</strong>.</p>
+<p>Onze AI heeft je tekst herschreven met 3 concrete verbeteringen:</p>
+{f'<ul style="margin:15px 0;padding-left:20px;background:#fffbeb;border-left:4px solid #f59e0b;padding:15px 15px 15px 35px;">{improvements_list}</ul>' if improvements_list else ''}
+<div style="background:#ecfdf5;border:2px solid #10b981;padding:20px;margin:20px 0;border-radius:6px;">
+<div style="background:#10b981;color:white;display:inline-block;padding:4px 12px;border-radius:3px;font-size:11px;font-weight:bold;margin-bottom:12px;">VERBETERDE TEKST — DIRECT TE GEBRUIKEN</div>
+<div style="background:white;border:1px solid #a7f3d0;padding:16px;font-size:13px;color:#374151;line-height:22px;margin-top:8px;">
+{improved_html if improved_html else '<em>Verbeterde tekst is beschikbaar in je volledige rapport.</em>'}
+</div>
+</div>
+<p><strong>Tip:</strong> Kopieer de tekst hierboven en plaats hem direct op je vacatureplatform. De meeste recruiters zien binnen 48 uur verschil in response.</p>
+<p>Morgen stuur ik je de marktanalyse — hoe jouw vacature zich verhoudt tot de concurrentie.</p>
 <p>Groeten,<br><strong>Wouter</strong><br><span style="color: #666666;">kandidatentekort.nl</span></p>
-<p style="color: #999999; font-size: 12px; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eeeeee;">
-PS: Geen verkooppraatje vandaag - gewoon even checken of alles werkt.</p>
 </div>""",
 
         2: f"""<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333333;">
 <p>Hoi {voornaam},</p>
-<p>Even nieuwsgierig: is het gelukt om de verbeterde vacaturetekst te plaatsen?</p>
-<p>Ik hoor het graag als je ergens tegenaan loopt, bijvoorbeeld:</p>
-<ul style="margin: 15px 0; padding-left: 20px;">
-<li>Intern akkoord nodig voor de nieuwe tekst?</li>
-<li>Technische problemen met het platform?</li>
-<li>Twijfels over bepaalde aanpassingen?</li>
-</ul>
-<p>Geen probleem - reply gewoon en ik denk met je mee.</p>
+<p>Gisteren de verbeterde tekst, vandaag de data: <strong>hoe staat jouw {functie_titel} vacature ervoor op de arbeidsmarkt?</strong></p>
+<div style="background:#f8fafc;border:1px solid #e2e8f0;padding:20px;margin:20px 0;border-radius:6px;">
+<div style="font-size:16px;font-weight:bold;color:#1e3a8a;margin-bottom:15px;">📊 Marktanalyse</div>
+<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:15px;">
+<tr>
+<td width="50%" style="padding:12px;background:#f1f5f9;text-align:center;border-radius:4px;">
+<div style="font-size:28px;font-weight:bold;color:#1f2937;">{ma.get('competing_vacancies', '—')}</div>
+<div style="font-size:11px;color:#6b7280;margin-top:4px;">concurrerende vacatures</div>
+</td>
+<td width="8px"></td>
+<td width="50%" style="padding:12px;background:#f1f5f9;text-align:center;border-radius:4px;">
+<div style="font-size:28px;font-weight:bold;color:#1f2937;">{ma.get('potential_candidates', '—')}</div>
+<div style="font-size:11px;color:#6b7280;margin-top:4px;">potentiële kandidaten</div>
+</td>
+</tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr>
+<td width="50%" style="padding:12px;background:#f1f5f9;text-align:center;border-radius:4px;">
+<div style="font-size:28px;font-weight:bold;color:#1f2937;">{ma.get('market_median_salary', '—')}</div>
+<div style="font-size:11px;color:#6b7280;margin-top:4px;">markt mediaan salaris</div>
+</td>
+<td width="8px"></td>
+<td width="50%" style="padding:12px;background:#f1f5f9;text-align:center;border-radius:4px;">
+<div style="font-size:28px;font-weight:bold;color:#1f2937;">{ma.get('supply_demand_ratio', '—')}</div>
+<div style="font-size:11px;color:#6b7280;margin-top:4px;">vraag/aanbod ratio</div>
+</td>
+</tr>
+</table>
+</div>
+<div style="background:#fef2f2;border-left:4px solid #ef4444;padding:15px 20px;margin:20px 0;border-radius:0 6px 6px 0;">
+<div style="font-weight:bold;color:#991b1b;margin-bottom:6px;">💰 Salaris Benchmark</div>
+<table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;">
+<tr><td style="color:#6b7280;padding:4px 0;">Aangeboden:</td><td style="font-weight:bold;color:#1f2937;">{sb.get('offered_range', 'niet vermeld')}</td></tr>
+<tr><td style="color:#6b7280;padding:4px 0;">Markt range:</td><td style="font-weight:bold;color:#1f2937;">{sb.get('market_range', '—')}</td></tr>
+<tr><td style="color:#6b7280;padding:4px 0;">Verschil:</td><td style="font-weight:bold;color:#ef4444;">{sb.get('difference', '—')}</td></tr>
+</table>
+{f'<p style="margin:10px 0 0;font-size:12px;color:#991b1b;">⚠️ {sb.get("warning", "")}</p>' if sb.get('warning') else ''}
+</div>
+<p><strong>Wat betekent dit?</strong> Als je vraag/aanbod ratio hoger is dan 2x, moet je vacature écht opvallen om de juiste kandidaten te trekken. De verbeterde tekst van gisteren helpt daarbij.</p>
+<p>Overmorgen stuur ik het laatste deel: je <strong>kanaalstrategie en actieplan</strong>.</p>
 <p>Groeten,<br><strong>Wouter</strong></p>
-<p style="color: #999999; font-size: 12px; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eeeeee;">
-Tip: De meeste recruiters zien binnen 48 uur na plaatsing al verschil in response.</p>
 </div>""",
 
         3: f"""<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333333;">
 <p>Hoi {voornaam},</p>
-<p>Het is nu een paar dagen geleden sinds je de verbeterde vacature voor <strong>{functie_titel}</strong> hebt ontvangen.</p>
-<p>Ik ben oprecht benieuwd: merk je al verschil in de reacties?</p>
-<div style="background-color: #f8f9fa; border-left: 4px solid #EF7D00; padding: 15px 20px; margin: 20px 0;">
-<p style="margin: 0 0 10px 0;"><strong>Mag ik je iets vragen?</strong></p>
-<p style="margin: 0;">Als je 2 minuten hebt, zou je me kunnen vertellen:</p>
-<ol style="margin: 10px 0; padding-left: 20px;">
-<li>Heb je de nieuwe tekst al live gezet?</li>
-<li>Zo ja, zie je verschil in aantal/kwaliteit reacties?</li>
-<li>Wat vond je het meest nuttig aan de analyse?</li>
+<p>Laatste deel van je analyse voor <strong>{functie_titel}</strong>: waar moet je je vacature plaatsen en wat zijn je volgende stappen?</p>
+{f'''<div style="background:#f8fafc;border:1px solid #e2e8f0;padding:20px;margin:20px 0;border-radius:6px;">
+<div style="font-size:16px;font-weight:bold;color:#1e3a8a;margin-bottom:15px;">📡 Aanbevolen Kanalen</div>
+<table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;">
+<tr style="background:#f1f5f9;"><th style="padding:10px;text-align:left;color:#6b7280;font-size:11px;">KANAAL</th><th style="padding:10px;text-align:left;color:#6b7280;font-size:11px;">WAAROM</th><th style="padding:10px;text-align:left;color:#6b7280;font-size:11px;">STATUS</th></tr>
+{channels_html}
+</table>
+</div>''' if channels_html else ''}
+{f'''<div style="background:#fffbeb;border:2px solid #f59e0b;padding:20px;margin:20px 0;border-radius:6px;">
+<div style="font-size:16px;font-weight:bold;color:#92400e;margin-bottom:15px;">🎯 Actieplan — 5 stappen</div>
+<table width="100%" cellpadding="0" cellspacing="0">{actions_html}</table>
+</div>''' if actions_html else ''}
+<div style="background:#f0f4ff;border-left:4px solid #3b82f6;padding:15px 20px;margin:20px 0;">
+<p style="margin:0 0 8px;font-weight:bold;color:#1e40af;">Samenvatting van je 3 emails:</p>
+<ol style="margin:0;padding-left:20px;color:#374151;">
+<li><strong>Dag 1:</strong> Verbeterde vacaturetekst (direct toepasbaar)</li>
+<li><strong>Dag 3:</strong> Marktanalyse + salaris benchmark (vandaag)</li>
+<li><strong>Dag 5:</strong> Kanaalstrategie + actieplan (deze email)</li>
 </ol>
-<p style="margin: 0; font-size: 13px; color: #666;">Jouw feedback helpt me om de service te verbeteren.</p>
 </div>
-<p>Reply gewoon op deze mail - ik lees alles persoonlijk.</p>
-<p>Alvast bedankt,<br><strong>Wouter</strong></p>
+<p>Dit was de complete analyse. Heb je vragen over een van de onderdelen? Reply gewoon — ik lees alles persoonlijk.</p>
+<p>De komende weken stuur ik je nog een paar recruitment tips die specifiek relevant zijn voor jouw sector.</p>
+<p>Succes met de werving,<br><strong>Wouter</strong></p>
 </div>""",
 
         4: f"""<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333333;">
@@ -1576,12 +1700,12 @@ Contact: warts@recruitin.nl | Nieuwe vacature? <a href="https://kandidatentekort
     return templates.get(email_num, "")
 
 
-def get_nurture_email_subject(email_num):
+def get_nurture_email_subject(email_num, functie_titel="vacature"):
     """Get subject line for nurture email"""
     subjects = {
-        1: "Even checken - alles goed ontvangen?",
-        2: "Is het gelukt om de aanpassingen door te voeren?",
-        3: "Benieuwd - merk je al verschil?",
+        1: f"Je verbeterde vacaturetekst voor {functie_titel}",
+        2: f"Marktanalyse: {functie_titel} — hoe staat jouw vacature ervoor?",
+        3: f"Kanaalstrategie + actieplan voor {functie_titel}",
         4: "Recruitment tip: De kracht van de juiste functietitel",
         5: "Recruitment tip: Het salarisvraagstuk",
         6: "Recruitment tip: De eerste 6 seconden",
@@ -1591,15 +1715,15 @@ def get_nurture_email_subject(email_num):
     return subjects.get(email_num, "Follow-up van kandidatentekort.nl")
 
 
-def send_nurture_email(to_email, email_num, voornaam, functie_titel):
-    """Send a nurture sequence email"""
+def send_nurture_email(to_email, email_num, voornaam, functie_titel, analysis_data=None):
+    """Send a nurture sequence email. Emails 1-3 include analysis data if available."""
     if not GMAIL_APP_PASSWORD:
         logger.warning("No Gmail password configured")
         return False
 
     try:
-        subject = get_nurture_email_subject(email_num)
-        html_content = get_nurture_email_html(email_num, voornaam, functie_titel)
+        subject = get_nurture_email_subject(email_num, functie_titel)
+        html_content = get_nurture_email_html(email_num, voornaam, functie_titel, analysis_data)
 
         if not html_content:
             logger.error(f"No template for email {email_num}")
@@ -1741,7 +1865,8 @@ def get_deals_for_nurture():
                         'deal_title': deal.get('title', ''),
                         'person_id': person_id,
                         'next_email': next_email,
-                        'days_since': days_since_rapport
+                        'days_since': days_since_rapport,
+                        'storage_prefix': deal.get(FIELD_ANALYSE_STORAGE_PREFIX, '') if FIELD_ANALYSE_STORAGE_PREFIX else '',
                     })
 
         logger.info(f"📧 Found {len(deals_to_email)} deals in stage {NURTURE_ACTIVE_STAGE} (Gekwalificeerd) ready for nurture emails")
@@ -1869,12 +1994,25 @@ def process_nurture_emails():
             # Extract functie from deal title
             functie_titel = deal['deal_title'].replace('Vacature Analyse - ', '').split(' - ')[0]
 
+            # For emails 1-3 (value drip), fetch analysis data from Supabase
+            analysis_data = None
+            if deal['next_email'] <= 3 and REPORT_BUILDER_AVAILABLE:
+                storage_prefix = deal.get('storage_prefix', '')
+                if storage_prefix:
+                    try:
+                        analysis_data = fetch_analysis_json(storage_prefix)
+                        if analysis_data:
+                            logger.info(f"📦 Loaded analysis data for drip email {deal['next_email']}")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Could not fetch analysis data: {e}")
+
             # Send the email
             success = send_nurture_email(
                 email,
                 deal['next_email'],
                 voornaam or 'daar',
-                functie_titel
+                functie_titel,
+                analysis_data
             )
 
             if success:
