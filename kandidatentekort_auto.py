@@ -33,14 +33,13 @@ from flask import Flask, request, jsonify
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Report generator (V5.2: Figma report templates)
-# TEMPORARILY DISABLED - will re-enable after Supabase dependency fixes
+# Report generator (V5.3: Figma report templates + Supabase Storage)
 REPORT_BUILDER_AVAILABLE = False
 try:
     from generator.report_builder import build_hosted_rapport, build_email_summary
     from generator.storage_uploader import upload_rapport
-    if os.getenv('ENABLE_REPORT_BUILDER') == '1':
-        REPORT_BUILDER_AVAILABLE = True
+    REPORT_BUILDER_AVAILABLE = True
+    logger.info("✅ Report builder loaded")
 except ImportError as e:
     logger.warning(f"⚠️ Report builder import failed: {e}")
 
@@ -291,18 +290,56 @@ def analyze_vacancy_with_claude(vacature_text, bedrijf, sector=""):
         logger.error("❌ ANTHROPIC_API_KEY not set!")
         return None
 
-    prompt = f"""Analyse this Dutch job posting briefly. Return ONLY valid JSON.
+    prompt = f"""Analyseer deze Nederlandse vacaturetekst grondig. Return ONLY valid JSON, geen extra tekst.
 
-Vacancy: {vacature_text[:1000]}
-Company: {bedrijf}
+Vacature: {vacature_text[:2000]}
+Bedrijf: {bedrijf}
+Sector: {sector or 'onbekend'}
 
+Geef een JSON object met EXACT deze structuur:
 {{
-    "overall_score": 7,
-    "score_section": "Title: 8/10 - Description: 7/10 - Salary: 6/10 - Branding: 7/10",
-    "top_3_improvements": ["Improve salary clarity", "Add company culture", "Stronger CTA"],
-    "improved_text": "Improved version of the vacancy (keep original tone, add salary clarity, employer branding)",
-    "bonus_tips": ["Use job board X", "Post on LinkedIn"]
-}}"""
+    "overall_score": 64,
+    "samenvatting": "Korte samenvatting van de analyse in 2-3 zinnen. Benoem de score, sterkste punt en belangrijkste verbeterpunt.",
+    "score_section": "Titel: 7/10 - Omschrijving: 7/10 - Salaris: 4/10 - Branding: 5/10",
+    "categories": [
+        {{"name": "Vacaturetitel & Vindbaarheid", "score": 75, "status": "ok"}},
+        {{"name": "Functieomschrijving", "score": 70, "status": "ok"}},
+        {{"name": "Salaris & Arbeidsvoorwaarden", "score": 35, "status": "bad"}},
+        {{"name": "Employer Branding", "score": 40, "status": "bad"}},
+        {{"name": "Kandidaat Experience", "score": 65, "status": "warning"}},
+        {{"name": "Kanaalstrategie", "score": 55, "status": "warning"}},
+        {{"name": "Concurrentiekracht", "score": 50, "status": "warning"}},
+        {{"name": "SEO & Online Vindbaarheid", "score": 80, "status": "ok"}}
+    ],
+    "market_analysis": {{
+        "competing_vacancies": 23,
+        "potential_candidates": 142,
+        "market_median_salary": "€4.800",
+        "supply_demand_ratio": "3.2x"
+    }},
+    "salary_benchmark": {{
+        "offered_range": "€4.200 - €5.500",
+        "market_range": "€4.800 - €6.200",
+        "difference": "-12% onder markt",
+        "warning": "Salaris ligt onder marktgemiddelde"
+    }},
+    "top_3_improvements": ["Verbetering 1", "Verbetering 2", "Verbetering 3"],
+    "improved_text": "Volledige herschreven vacaturetekst in het Nederlands. Behoud de originele toon maar verbeter: salaristransparantie, employer branding, concrete USPs, duidelijke CTA.",
+    "action_items": ["Actie 1", "Actie 2", "Actie 3", "Actie 4", "Actie 5"],
+    "recommended_channels": [
+        {{"name": "Indeed", "description": "Grootste bereik voor deze functie", "status": "AANBEVOLEN"}},
+        {{"name": "LinkedIn Jobs", "description": "Gericht op ervaren professionals", "status": "AANBEVOLEN"}}
+    ],
+    "bonus_tips": ["Tip 1", "Tip 2"]
+}}
+
+BELANGRIJK:
+- Scores zijn 0-100 (niet 0-10). overall_score is het gemiddelde van de 8 categorieën.
+- status: "ok" (score>=65), "warning" (score 45-64), "bad" (score<45)
+- market_analysis: schat realistisch in op basis van sector en functie
+- salary_benchmark: als geen salaris vermeld, schat in op basis van functie/sector
+- improved_text: volledige herschreven tekst, minimaal 200 woorden
+- Alles in het Nederlands"""
 
     try:
         logger.info("🤖 Starting Claude analysis...")
@@ -318,7 +355,7 @@ Company: {bedrijf}
                 "max_tokens": 4000,
                 "messages": [{"role": "user", "content": prompt}]
             },
-            timeout=60
+            timeout=120
         )
 
         if r.status_code == 200:
@@ -1156,11 +1193,28 @@ def process_vacancy_analysis(p, vacancy_text):
                 )
                 if analysis:
                     try:
-                        analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], p['functie'], analysis, final_text)
-                        logger.info(f"✅ Analysis email sent to {p['email']}")
+                        # Try hosted rapport + premium email first
+                        if REPORT_BUILDER_AVAILABLE and analysis.get('categories'):
+                            logger.info("📊 Building hosted rapport...")
+                            rapport_html = build_hosted_rapport(analysis, p['bedrijf'], p['functie'])
+                            rapport_url = upload_rapport(rapport_html, lead_name=p['bedrijf'])
+                            logger.info(f"📊 Rapport URL: {rapport_url or 'upload skipped'}")
+
+                            email_html = build_email_summary(analysis, p['bedrijf'], p['functie'], rapport_url)
+                            analysis_sent = send_email(p['email'],
+                                f"📊 Vacature-analyse: {p['functie']} — Score {analysis.get('overall_score', '?')}/100",
+                                email_html)
+                            logger.info(f"✅ Premium analysis email sent to {p['email']}")
+                        else:
+                            # Fallback: legacy inline email
+                            analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], p['functie'], analysis, final_text)
+                            logger.info(f"✅ Legacy analysis email sent to {p['email']}")
                     except Exception as email_error:
-                        logger.error(f"❌ send_analysis_email failed: {email_error}", exc_info=True)
-                        analysis_sent = False
+                        logger.error(f"❌ Report builder failed, falling back to legacy: {email_error}", exc_info=True)
+                        try:
+                            analysis_sent = send_analysis_email(p['email'], p['voornaam'], p['bedrijf'], p['functie'], analysis, final_text)
+                        except Exception:
+                            analysis_sent = False
             except Exception as e:
                 logger.error(f"❌ Claude analysis failed even with retries: {e}")
 
