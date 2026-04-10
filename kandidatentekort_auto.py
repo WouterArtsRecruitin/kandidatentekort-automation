@@ -1354,30 +1354,37 @@ def test_async():
 
 @app.route("/test-pipeline", methods=["GET"])
 def test_pipeline():
-    """Debug: run Claude + report builder synchronously and return results."""
-    test_text = "Wij zoeken een Senior Developer met 5 jaar ervaring Python. Salaris: marktconform. Locatie: Amsterdam."
-    results = {"report_builder": REPORT_BUILDER_AVAILABLE}
+    """Debug: test report builder + Supabase upload (no Claude, instant)."""
+    results = {
+        "report_builder": REPORT_BUILDER_AVAILABLE,
+        "supabase_url": bool(os.getenv("SUPABASE_URL")),
+        "supabase_key": bool(os.getenv("SUPABASE_SERVICE_KEY")),
+    }
 
-    # Step 1: Claude
-    try:
-        analysis = analyze_vacancy_with_claude(test_text, "Test BV", "IT")
-        results["claude_ok"] = analysis is not None
-        results["has_categories"] = bool(analysis and analysis.get("categories"))
-        results["score"] = analysis.get("overall_score") if analysis else None
-        results["keys"] = list(analysis.keys()) if analysis else []
-    except Exception as e:
-        results["claude_error"] = str(e)
-        return jsonify(results), 500
+    # Test with mock analysis data
+    mock_analysis = {
+        "overall_score": 64,
+        "samenvatting": "Test rapport — pipeline verificatie",
+        "categories": [
+            {"name": "Vacaturetitel", "score": 75, "status": "ok"},
+            {"name": "Functieomschrijving", "score": 70, "status": "ok"},
+            {"name": "Salaris", "score": 35, "status": "bad"},
+        ],
+        "market_analysis": {"competing_vacancies": 23, "potential_candidates": 142, "market_median_salary": "€4.800", "supply_demand_ratio": "3.2x"},
+        "salary_benchmark": {"offered_range": "€4.200-€5.500", "market_range": "€4.800-€6.200", "difference": "-12%", "warning": "Onder markt"},
+        "improved_text": "Test verbeterde tekst",
+        "action_items": ["Actie 1", "Actie 2"],
+        "recommended_channels": [{"name": "Indeed", "description": "Test", "status": "AANBEVOLEN"}],
+    }
 
-    # Step 2: Report builder
-    if REPORT_BUILDER_AVAILABLE and analysis and analysis.get("categories"):
+    if REPORT_BUILDER_AVAILABLE:
         try:
-            html = build_hosted_rapport(analysis, "Test BV", "Senior Developer")
+            html = build_hosted_rapport(mock_analysis, "Test BV", "Test Functie")
             results["rapport_html_len"] = len(html)
         except Exception as e:
             results["rapport_error"] = str(e)
+            return jsonify(results), 500
 
-        # Step 3: Upload
         try:
             url = upload_rapport(html, lead_name="test_pipeline")
             results["rapport_url"] = url
