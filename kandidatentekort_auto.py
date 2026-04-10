@@ -1047,7 +1047,7 @@ def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="
 def home():
     return jsonify({
         "status": "healthy",
-        "version": "5.1",
+        "version": "5.2",
         "features": ["typeform", "analysis", "nurture"],
         "email": bool(GMAIL_APP_PASSWORD),
         "pipedrive": bool(PIPEDRIVE_API_TOKEN),
@@ -1849,7 +1849,7 @@ def nurture_scheduler():
 def health_check():
     return jsonify({
         "status": "healthy",
-        "version": "5.1",
+        "version": "5.2",
         "features": ["typeform", "analysis", "nurture"],
         "email": bool(GMAIL_APP_PASSWORD),
         "pipedrive": bool(PIPEDRIVE_API_TOKEN),
