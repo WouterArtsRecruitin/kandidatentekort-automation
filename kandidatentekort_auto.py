@@ -34,13 +34,15 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Report generator (V5.2: Figma report templates)
+# TEMPORARILY DISABLED - will re-enable after Supabase dependency fixes
+REPORT_BUILDER_AVAILABLE = False
 try:
     from generator.report_builder import build_hosted_rapport, build_email_summary
     from generator.storage_uploader import upload_rapport
-    REPORT_BUILDER_AVAILABLE = True
+    if os.getenv('ENABLE_REPORT_BUILDER') == '1':
+        REPORT_BUILDER_AVAILABLE = True
 except ImportError as e:
-    REPORT_BUILDER_AVAILABLE = False
-    logger.warning(f"⚠️ Report builder not available: {e}")
+    logger.warning(f"⚠️ Report builder import failed: {e}")
 
 # PDF and DOCX extraction
 try:
