@@ -1899,6 +1899,33 @@ def nurture_scheduler():
         time.sleep(60)
 
 
+@app.route("/rapport", methods=["GET"])
+def serve_rapport():
+    """Proxy: fetch rapport HTML from Supabase Storage and serve as text/html."""
+    path = request.args.get("path", "")
+    if not path:
+        return "Missing 'path' parameter", 400
+
+    supabase_url = os.getenv("SUPABASE_URL", "")
+    supabase_key = os.getenv("SUPABASE_SERVICE_KEY", "")
+    if not supabase_url or not supabase_key:
+        return "Storage not configured", 500
+
+    try:
+        resp = requests.get(
+            f"{supabase_url}/storage/v1/object/public/kt-assets/{path}",
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            return resp.content, 200, {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=3600"}
+        else:
+            logger.error(f"❌ Rapport fetch failed: {resp.status_code}")
+            return "Rapport niet gevonden", 404
+    except Exception as e:
+        logger.error(f"❌ Rapport proxy error: {e}")
+        return "Fout bij ophalen rapport", 500
+
+
 @app.route("/health", methods=["GET"])
 def health_check():
     return jsonify({

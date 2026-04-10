@@ -73,9 +73,9 @@ def upload_rapport(html_content: str, lead_name: str) -> str:
         else:
             logger.warning(f"⚠️ Upload status {resp.status_code}: {resp.text[:200]}")
 
-        # Return Netlify proxy URL (serves HTML with correct Content-Type)
-        netlify_base = os.environ.get("NETLIFY_URL", "https://kandidatentekort.nl")
-        return f"{netlify_base}/.netlify/functions/kt-rapport?path={storage_path}"
+        # Return Render proxy URL (serves HTML with correct Content-Type)
+        render_base = os.environ.get("RENDER_URL", "https://kandidatentekort-automation.onrender.com")
+        return f"{render_base}/rapport?path={storage_path}"
 
     except Exception as e:
         logger.error(f"❌ Rapport upload failed: {e}")
