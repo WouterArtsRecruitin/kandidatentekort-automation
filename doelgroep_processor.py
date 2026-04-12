@@ -407,13 +407,62 @@ SECTORDATA (gebruik als primaire referentie — niet afwijken zonder gegronde re
 - Top concurrenten: {', '.join(c[0] for c in sector_ref['top5_concurrenten'])}
 """
 
+    # Build enriched context from new intake fields
+    functie         = lead.get('functie', '')
+    regio           = lead.get('regio', '')
+    niveau          = lead.get('niveau', '')
+    opleiding       = lead.get('opleiding', '')
+    specialisatie   = lead.get('specialisatie', '')
+    vacatures_open  = lead.get('vacatures_open', '')
+    zoektijd        = lead.get('zoektijd', '')
+    kanalen_gebruikt = lead.get('kanalen_gebruikt', [])
+    salaris_positie = lead.get('salaris_positie', '')
+    arbeidsvoorwaarden = lead.get('arbeidsvoorwaarden', [])
+    bedrijfsgrootte = lead.get('bedrijfsgrootte', '')
+
+    # Determine which channels are NOT yet used (for targeted advice)
+    alle_kanalen = ['linkedin', 'indeed', 'referral', 'bureau', 'techniekwerkt', 'socialmedia']
+    kanalen_nog_niet = [k for k in alle_kanalen if k not in kanalen_gebruikt]
+
+    # Urgency signal
+    urgentie_context = ""
+    if vacatures_open and zoektijd:
+        urgentie_context = f"\n- URGENTIE: {vacatures_open} vacature(s) openstaan, al {zoektijd.replace('_', ' ')} zoekend — hoge urgentie, actieplan prioriteit op snelle wins"
+
+    # EVP gap context
+    evp_context = ""
+    if salaris_positie:
+        salaris_map = {
+            'onder_markt': 'ONDER markt (risico op verlies aan concurrenten)',
+            'marktconform': 'MARKTCONFORM (gemiddeld, geen onderscheidend voordeel)',
+            'boven_markt': 'BOVEN markt (sterk EVP-voordeel op salaris)',
+            'weet_niet': 'ONBEKEND (adviseer marktcheck te doen)'
+        }
+        evp_context += f"\n- Salaris positie: {salaris_map.get(salaris_positie, salaris_positie)}"
+    if arbeidsvoorwaarden:
+        evp_context += f"\n- Aangeboden arbeidsvoorwaarden: {', '.join(arbeidsvoorwaarden)}"
+        # Check what's missing for this sector
+        if 'lease_auto' not in arbeidsvoorwaarden:
+            evp_context += "\n  → Geen lease auto — kritieke EVP-gap voor veld/technisch personeel"
+        if 'opleidingsbudget' not in arbeidsvoorwaarden:
+            evp_context += "\n  → Geen opleidingsbudget — gemist voordeel voor ambitieuze technici"
+
     prompt = f"""Je bent een senior Nederlandse arbeidsmarktanalist met 15 jaar ervaring in technisch recruitment.
 
 KLANTGEGEVENS:
 - Bedrijf: {lead['company_name']}
+- Doelgroep: {functie} — {opleiding.upper() if opleiding else 'niveau onbekend'}, {niveau.capitalize() if niveau else ''} ({specialisatie if specialisatie else 'geen specialisatie opgegeven'})
 - Sector: {lead.get('sector', 'Onbekend')}
-- Teamgrootte technisch personeel: {lead.get('team_size', 'Onbekend')}
-- Grootste wervingsuitdaging: {lead.get('challenge', 'Niet opgegeven')}
+- Regio: {regio.replace('_', '-').title() if regio else 'Nederland'}
+- Bedrijfsgrootte: {bedrijfsgrootte or 'niet opgegeven'}
+
+WERVINGSSITUATIE:{urgentie_context}
+- Zoektijd: {zoektijd.replace('_', ' ') if zoektijd else 'niet opgegeven'}
+- Vacatures open: {vacatures_open or 'niet opgegeven'}
+- Kanalen al gebruikt: {', '.join(kanalen_gebruikt) if kanalen_gebruikt else 'geen opgegeven'}
+- Kanalen NOG NIET geprobeerd: {', '.join(kanalen_nog_niet) if kanalen_nog_niet else 'alle kanalen al geprobeerd'}
+
+EVP POSITIE:{evp_context if evp_context else ' niet opgegeven'}
 
 {sector_context}
 
@@ -422,12 +471,14 @@ Genereer een volledig, data-gedreven Doelgroepen Rapport voor dit specifieke bed
 
 VEREISTEN:
 1. Alle kwantitatieve data MOET aansluiten bij de sectordata hierboven
-2. Schat regionale data als ~35-45% van de nationale poolcijfers (tenzij sector geconcentreerd is)
-3. Wees specifiek voor het bedrijfstype en de opgegeven uitdaging
-4. Geen generieke platitudes — concrete, toepasbare inzichten
-5. Salarisdata moet realistisch zijn voor Nederland in 2026
-6. Genereer 3 scenario's in scenario_simulator: baseline (huidige aanpak), verbeterd (1 interventie), optimaal (multi-aanpak)
-7. Actieplan: 5-6 acties gesorteerd op impact/effort verhouding
+2. Regionale pool = schat ~35-45% van de nationale pool (tenzij sector geconcentreerd in specifieke regio)
+3. KANAAL ADVIES: benoem expliciet de kanalen die NOG NIET gebruikt zijn als kans. Als referral niet gebruikt is, altijd als hoogste prioriteit aanbevelen (3× hogere conversie voor technisch)
+4. EVP GAP: analyseer de specifieke arbeidsvoorwaarden vs. wat de sector vereist — wees concreet over gaps
+5. URGENTIE: als 3+ maanden zoekend met 2+ vacatures: markeer als kritiek, actieplan focust op snelle wins (week 1-2)
+6. Salarisdata moet realistisch zijn voor Nederland 2026, gecorrigeerd voor regio
+7. Genereer 3 scenario's: baseline (huidige aanpak), verbeterd (1 gerichte interventie), optimaal (multi-aanpak)
+8. Actieplan: 5-6 acties gesorteerd op impact/effort, eerste actie altijd uitvoerbaar morgen
+9. Geen generieke platitudes — alle adviezen specifiek voor "{functie}" in {regio or 'NL'}
 
 Genereer het rapport als valid JSON met precies deze structuur:
 {JSON_SCHEMA}
@@ -1224,7 +1275,12 @@ def update_doelgroep_lead_status(lead_id: str, status: str):
 
 
 def insert_doelgroep_lead(company_name: str, email: str, sector: str,
-                           team_size: str, challenge: str) -> dict:
+                           team_size: str = "", challenge: str = "",
+                           functie: str = "", regio: str = "", niveau: str = "",
+                           opleiding: str = "", specialisatie: str = "",
+                           vacatures_open: str = "", zoektijd: str = "",
+                           kanalen_gebruikt: list = None, salaris_positie: str = "",
+                           arbeidsvoorwaarden: list = None, bedrijfsgrootte: str = "") -> dict:
     """Insert new lead into Supabase leads table. Returns created record."""
     payload = {
         "company_name": company_name,
@@ -1236,14 +1292,49 @@ def insert_doelgroep_lead(company_name: str, email: str, sector: str,
         "created_at": datetime.utcnow().isoformat(),
         "updated_at": datetime.utcnow().isoformat(),
     }
+    # Extended fields — added to Supabase in V2 upgrade
+    extended = {
+        "functie": functie,
+        "regio": regio,
+        "niveau": niveau,
+        "opleiding": opleiding,
+        "specialisatie": specialisatie,
+        "vacatures_open": vacatures_open,
+        "zoektijd": zoektijd,
+        "kanalen_gebruikt": json.dumps(kanalen_gebruikt or []),
+        "salaris_positie": salaris_positie,
+        "arbeidsvoorwaarden": json.dumps(arbeidsvoorwaarden or []),
+        "bedrijfsgrootte": bedrijfsgrootte,
+    }
+    payload.update(extended)
     r = requests.post(
         f"{SUPABASE_REST}/leads",
         headers=HEADERS_SB,
         json=payload,
     )
+    # If extended columns don't exist yet in Supabase, fall back to base fields only
+    if r.status_code in (400, 422):
+        logger.warning(f"[doelgroep] Extended columns not in Supabase yet, using base fields")
+        r = requests.post(
+            f"{SUPABASE_REST}/leads",
+            headers=HEADERS_SB,
+            json={k: v for k, v in payload.items() if k not in extended},
+        )
     r.raise_for_status()
     records = r.json()
-    return records[0] if records else {"id": "unknown", **payload}
+    base = records[0] if records else {"id": "unknown", **payload}
+    # Merge extended fields into returned dict so background thread has them
+    for k, v in extended.items():
+        if k not in base:
+            base[k] = v
+    # Deserialize JSON arrays back to lists
+    for k in ("kanalen_gebruikt", "arbeidsvoorwaarden"):
+        if isinstance(base.get(k), str):
+            try:
+                base[k] = json.loads(base[k])
+            except (json.JSONDecodeError, TypeError):
+                base[k] = []
+    return base
 
 
 # ---------------------------------------------------------------------------

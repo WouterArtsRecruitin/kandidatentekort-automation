@@ -1468,7 +1468,7 @@ def doelgroepen_webhook():
 
         logger.info(f"[doelgroepen] Webhook ontvangen — keys: {list(data.keys())[:10]}")
 
-        # Field extraction — try multiple naming conventions from Jotform
+        # Field extraction — try multiple naming conventions from Jotform/JSON
         def field(keys, default=""):
             for k in keys:
                 for d_key in data.keys():
@@ -1478,17 +1478,53 @@ def doelgroepen_webhook():
                             return str(v).strip()
             return default
 
-        company_name = field(["bedrijfsnaam", "company", "bedrijf", "organisation"])
-        email_addr   = field(["email", "mail", "e-mail"])
-        sector       = field(["sector"])
-        team_size    = field(["teamgrootte", "team_size", "teamsize", "medewerkers"])
-        challenge    = field(["uitdaging", "challenge", "problem", "probleem", "wervingsuitdaging"])
+        def field_list(keys):
+            """Extract a JSON array or comma-separated string field."""
+            for k in keys:
+                v = data.get(k)
+                if v is None:
+                    # fuzzy match
+                    for d_key in data.keys():
+                        if k.lower() in d_key.lower():
+                            v = data[d_key]
+                            break
+                if v is not None:
+                    if isinstance(v, list):
+                        return v
+                    if isinstance(v, str) and v.strip():
+                        import json as _json
+                        try:
+                            parsed = _json.loads(v)
+                            if isinstance(parsed, list):
+                                return parsed
+                        except Exception:
+                            pass
+                        return [x.strip() for x in v.split(',') if x.strip()]
+            return []
+
+        company_name    = field(["bedrijfsnaam", "company", "bedrijf", "organisation"])
+        email_addr      = field(["email", "mail", "e-mail"])
+        sector          = field(["sector"])
+        team_size       = field(["teamgrootte", "team_size", "teamsize", "medewerkers"])
+        challenge       = field(["uitdaging", "challenge", "problem", "probleem"])
+        # New V2 fields
+        functie         = field(["functie", "functietitel", "role"])
+        regio           = field(["regio", "region"])
+        niveau          = field(["niveau", "ervaringsniveau", "level"])
+        opleiding       = field(["opleiding", "opleidingsniveau", "education"])
+        specialisatie   = field(["specialisatie", "vakgebied", "specialization"])
+        vacatures_open  = field(["vacatures_open", "vacatures", "openstaande"])
+        zoektijd        = field(["zoektijd", "zoek_tijd", "search_time"])
+        kanalen_gebruikt = field_list(["kanalen_gebruikt", "kanalen"])
+        salaris_positie = field(["salaris_positie", "salaris"])
+        arbeidsvoorwaarden = field_list(["arbeidsvoorwaarden"])
+        bedrijfsgrootte = field(["bedrijfsgrootte", "grootte", "company_size"])
 
         if not company_name or not email_addr:
             logger.warning(f"[doelgroepen] Missende verplichte velden — data: {data}")
             return jsonify({"error": "company_name en email zijn verplicht"}), 400
 
-        logger.info(f"[doelgroepen] Lead: {company_name} / {email_addr} / {sector}")
+        logger.info(f"[doelgroepen] Lead: {company_name} / {email_addr} / {functie or sector}")
 
         # Save to Supabase and get lead record
         lead = None
@@ -1500,6 +1536,17 @@ def doelgroepen_webhook():
                     sector=sector,
                     team_size=team_size,
                     challenge=challenge,
+                    functie=functie,
+                    regio=regio,
+                    niveau=niveau,
+                    opleiding=opleiding,
+                    specialisatie=specialisatie,
+                    vacatures_open=vacatures_open,
+                    zoektijd=zoektijd,
+                    kanalen_gebruikt=kanalen_gebruikt,
+                    salaris_positie=salaris_positie,
+                    arbeidsvoorwaarden=arbeidsvoorwaarden,
+                    bedrijfsgrootte=bedrijfsgrootte,
                 )
                 logger.info(f"[doelgroepen] Supabase insert OK — id={lead.get('id')}")
             except Exception as e:
@@ -1511,6 +1558,17 @@ def doelgroepen_webhook():
                     "sector": sector,
                     "team_size": team_size,
                     "challenge": challenge,
+                    "functie": functie,
+                    "regio": regio,
+                    "niveau": niveau,
+                    "opleiding": opleiding,
+                    "specialisatie": specialisatie,
+                    "vacatures_open": vacatures_open,
+                    "zoektijd": zoektijd,
+                    "kanalen_gebruikt": kanalen_gebruikt,
+                    "salaris_positie": salaris_positie,
+                    "arbeidsvoorwaarden": arbeidsvoorwaarden,
+                    "bedrijfsgrootte": bedrijfsgrootte,
                 }
 
             # Fire background pipeline
@@ -1542,15 +1600,28 @@ def doelgroepen_test():
     if not _check_admin_secret():
         return jsonify({"error": "Unauthorized"}), 401
 
+    rj = request.json or {}
     test_lead = {
         "id": None,
-        "company_name": request.json.get("company_name", "Test Bedrijf B.V."),
-        "email": request.json.get("email", "artsrecruitin@gmail.com"),
-        "sector": request.json.get("sector", "automation"),
-        "team_size": request.json.get("team_size", "51-200"),
-        "challenge": request.json.get("challenge", "We vinden al 6 maanden geen PLC-programmeur"),
+        "company_name": rj.get("company_name", "Test Bedrijf B.V."),
+        "email": rj.get("email", "artsrecruitin@gmail.com"),
+        "sector": rj.get("sector", "installatietechniek"),
+        "team_size": rj.get("team_size", "51-200"),
+        "challenge": rj.get("challenge", ""),
+        # V2 fields
+        "functie": rj.get("functie", "Monteur Elektrotechniek"),
+        "regio": rj.get("regio", "gelderland"),
+        "niveau": rj.get("niveau", "medior"),
+        "opleiding": rj.get("opleiding", "mbo4"),
+        "specialisatie": rj.get("specialisatie", "laagspanning"),
+        "vacatures_open": rj.get("vacatures_open", "2-3"),
+        "zoektijd": rj.get("zoektijd", "3-6_mnd"),
+        "kanalen_gebruikt": rj.get("kanalen_gebruikt", ["linkedin", "indeed"]),
+        "salaris_positie": rj.get("salaris_positie", "marktconform"),
+        "arbeidsvoorwaarden": rj.get("arbeidsvoorwaarden", ["thuiswerken", "opleidingsbudget"]),
+        "bedrijfsgrootte": rj.get("bedrijfsgrootte", "51-200"),
     }
-    logger.info(f"[doelgroepen-test] Triggering pipeline for {test_lead['email']}")
+    logger.info(f"[doelgroepen-test] Triggering pipeline for {test_lead['email']} / {test_lead['functie']}")
 
     if DOELGROEP_AVAILABLE:
         t = threading.Thread(target=process_doelgroep_lead_bg, args=(test_lead,), daemon=True)
