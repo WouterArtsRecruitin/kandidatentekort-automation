@@ -24,6 +24,14 @@ services:
         sync: false
       - key: GMAIL_APP_PASSWORD
         sync: false
+      - key: LEMLIST_API_KEY
+        sync: false
+      - key: LEMLIST_CAMPAIGN_ID
+        value: cam_TcSpPxJL9anRkf5TS
+      - key: ADMIN_SECRET
+        sync: false
+      - key: FIELD_ANALYSE_STORAGE_PREFIX
+        sync: false
       - key: PORT
         value: 10000
     healthCheckPath: /health

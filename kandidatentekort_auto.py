@@ -1190,7 +1190,7 @@ def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="
 
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({"status": "ok", "version": "5.3"}), 200
+    return jsonify({"status": "ok", "version": "5.5"}), 200
 
 
 def retry_with_backoff(func, max_retries=3, backoff_seconds=2):
@@ -2037,7 +2037,7 @@ def mark_email_sent(deal_id, email_num):
         new_status = ','.join(sorted(existing, key=int))
 
         # Update deal
-        requests.patch(
+        requests.put(
             f"{PIPEDRIVE_BASE}/deals/{deal_id}",
             headers=_pd_headers(),
             json={
@@ -2205,7 +2205,7 @@ def serve_rapport():
 def health_check():
     return jsonify({
         "status": "healthy",
-        "version": "5.3",
+        "version": "5.5",
         "report_builder": REPORT_BUILDER_AVAILABLE,
         "features": ["typeform", "analysis", "nurture"],
         "email": bool(GMAIL_APP_PASSWORD),

@@ -9,3 +9,5 @@ venv/
 node_modules/
 *.secret
 *credentials*
+# Local Netlify folder
+.netlify
