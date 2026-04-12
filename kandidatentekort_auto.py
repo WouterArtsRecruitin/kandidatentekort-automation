@@ -26,6 +26,7 @@ import hmac
 import hashlib
 import base64
 from datetime import datetime, timedelta
+import zoneinfo
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, jsonify
@@ -45,9 +46,21 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Report builder import failed: {e}")
 
+# Doelgroepen Rapport pipeline (V2 — 12-module AI analyse)
+DOELGROEP_AVAILABLE = False
+try:
+    from doelgroep_processor import (
+        process_doelgroep_lead_bg,
+        insert_doelgroep_lead,
+    )
+    DOELGROEP_AVAILABLE = True
+    logger.info("✅ Doelgroep processor loaded")
+except ImportError as e:
+    logger.warning(f"⚠️ Doelgroep processor import failed: {e}")
+
 # PDF and DOCX extraction
 try:
-    from PyPDF2 import PdfReader
+    from pypdf import PdfReader
     PDF_AVAILABLE = True
 except ImportError:
     PDF_AVAILABLE = False
@@ -68,10 +81,17 @@ RESEND_API_KEY = os.getenv('RESEND_API_KEY')
 RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', 'noreply@kandidatentekort.nl')
 GMAIL_USER = os.getenv('GMAIL_USER', 'artsrecruitin@gmail.com')
 GMAIL_APP_PASSWORD = os.getenv('GMAIL_APP_PASSWORD') or os.getenv('GMAIL_PASS')
+LEMLIST_API_KEY = os.getenv('LEMLIST_API_KEY', '')
+LEMLIST_CAMPAIGN_ID = os.getenv('LEMLIST_CAMPAIGN_ID', 'cam_TcSpPxJL9anRkf5TS')
 PIPEDRIVE_BASE = "https://api.pipedrive.com/v1"
 PIPELINE_ID = 4
 STAGE_ID = 21
 ADMIN_SECRET = os.getenv('ADMIN_SECRET', '')  # Required for test/debug/nurture endpoints
+
+
+def _pd_headers():
+    """Return Pipedrive API auth headers (Bearer token, not URL param to avoid log leakage)."""
+    return {"Authorization": f"Bearer {PIPEDRIVE_API_TOKEN}"}
 
 # Email Nurture Custom Field Keys (from Pipedrive)
 FIELD_RAPPORT_VERZONDEN = "337f9ccca15334e6e4f937ca5ef0055f13ed0c63"
@@ -169,7 +189,7 @@ def extract_text_from_file(file_url):
 def extract_pdf_text(content):
     """Extract text from PDF content"""
     if not PDF_AVAILABLE:
-        logger.error("❌ PyPDF2 not available")
+        logger.error("❌ pypdf not available")
         return ""
 
     try:
@@ -223,6 +243,9 @@ def extract_docx_text(content):
 
 
 def get_confirmation_email_html(voornaam, bedrijf, functie):
+    voornaam = str(html_escape(voornaam))
+    bedrijf = str(html_escape(bedrijf))
+    functie = str(html_escape(functie))
     return f'''<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;font-family:Inter,-apple-system,sans-serif;background:#f9fafb;">
 <table width="100%" style="padding:40px 20px;"><tr><td align="center">
@@ -416,11 +439,14 @@ def get_analysis_email_html(voornaam, bedrijf, analysis, original_text=""):
     OUTLOOK COMPATIBLE - No flex, no gradients, all table-based layout
     Features: Score visualization, Before/After, Checklist, Improved text, Tips
     """
+    # Escape all user/Claude data before embedding in HTML
+    voornaam = str(html_escape(voornaam))
+    bedrijf = str(html_escape(bedrijf))
     score = analysis.get('overall_score', 'N/A')
-    score_section = analysis.get('score_section', '')
-    improvements = analysis.get('top_3_improvements', [])
-    improved_text = analysis.get('improved_text', '')
-    bonus_tips = analysis.get('bonus_tips', [])
+    score_section = str(html_escape(analysis.get('score_section', '')))
+    improvements = [str(html_escape(str(imp))) for imp in analysis.get('top_3_improvements', [])]
+    improved_text = str(html_escape(analysis.get('improved_text', '')))
+    bonus_tips = [str(html_escape(str(tip))) for tip in analysis.get('bonus_tips', [])]
 
     # Generate HTML for improvements (numbered) - OUTLOOK COMPATIBLE
     improvements_html = ''.join([
@@ -443,13 +469,12 @@ def get_analysis_email_html(voornaam, bedrijf, analysis, original_text=""):
         </td></tr>''' for tip in bonus_tips
     ])
 
-    # Truncate original text for before/after display
-    original_display = original_text[:500] + '...' if len(original_text) > 500 else original_text
-    improved_preview = improved_text[:500] + '...' if len(improved_text) > 500 else improved_text
-
-    # Escape newlines for HTML display
-    original_display = original_display.replace('\n', '<br>')
-    improved_preview = improved_preview.replace('\n', '<br>')
+    # Truncate original text for before/after display (escape first, then convert newlines)
+    raw_original = original_text[:500] + '...' if len(original_text) > 500 else original_text
+    raw_preview = analysis.get('improved_text', '')
+    raw_preview = raw_preview[:500] + '...' if len(raw_preview) > 500 else raw_preview
+    original_display = str(html_escape(raw_original)).replace('\n', '<br>')
+    improved_preview = str(html_escape(raw_preview)).replace('\n', '<br>')
     improved_text_html = improved_text.replace('\n', '<br>')
 
     # Calculate score color and label based on score (0-100 scale)
@@ -1048,7 +1073,7 @@ def create_pipedrive_organization(name):
     try:
         r = requests.post(
             f"{PIPEDRIVE_BASE}/organizations",
-            params={"api_token": PIPEDRIVE_API_TOKEN},
+            headers=_pd_headers(),
             json={"name": name},
             timeout=30
         )
@@ -1072,11 +1097,8 @@ def get_or_create_organization(name):
         # Search for existing organization
         r = requests.get(
             f"{PIPEDRIVE_BASE}/organizations/find",
-            params={
-                "api_token": PIPEDRIVE_API_TOKEN,
-                "term": name,
-                "limit": 1
-            },
+            headers=_pd_headers(),
+            params={"term": name, "limit": 1},
             timeout=30
         )
 
@@ -1110,7 +1132,7 @@ def create_pipedrive_person(contact, email, telefoon, org_id=None):
 
         r = requests.post(
             f"{PIPEDRIVE_BASE}/persons",
-            params={"api_token": PIPEDRIVE_API_TOKEN},
+            headers=_pd_headers(),
             json=data,
             timeout=30
         )
@@ -1143,7 +1165,7 @@ def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="
 
         r = requests.post(
             f"{PIPEDRIVE_BASE}/deals",
-            params={"api_token": PIPEDRIVE_API_TOKEN},
+            headers=_pd_headers(),
             json=deal_data,
             timeout=30
         )
@@ -1163,7 +1185,7 @@ def create_pipedrive_deal(title, person_id, org_id=None, vacature="", file_url="
             if note_parts:
                 requests.post(
                     f"{PIPEDRIVE_BASE}/notes",
-                    params={"api_token": PIPEDRIVE_API_TOKEN},
+                    headers=_pd_headers(),
                     json={
                         "deal_id": deal_id,
                         "content": "\n\n".join(note_parts)
@@ -1273,6 +1295,8 @@ def process_vacancy_analysis(p, vacancy_text):
         # Run Claude analysis if we have vacancy text (with retry logic)
         analysis = None
         analysis_sent = False
+        rapport_url = ""      # initialized here to prevent NameError if report builder unavailable
+        storage_prefix = ""   # initialized here to prevent NameError if analysis fails
         if final_text and len(final_text) > 50:
             try:
                 # RETRY FIX: Use exponential backoff for Claude API
@@ -1423,6 +1447,119 @@ def _check_admin_secret():
     return True
 
 
+# ---------------------------------------------------------------------------
+# DOELGROEPEN RAPPORT WEBHOOK
+# Jotform form 260964665476068 → analyse → 12-module HTML email in 24h
+# ---------------------------------------------------------------------------
+@app.route("/webhook/doelgroepen", methods=["POST"])
+def doelgroepen_webhook():
+    """
+    Receive Jotform submission for DoelgroepenRapport.nl
+    1. Parse form fields (company_name, email, sector, team_size, challenge)
+    2. Return 200 immediately
+    3. Background thread: Claude analyse → 12-module HTML → Resend email
+    """
+    try:
+        # Parse URL-encoded (Jotform default) or JSON
+        if request.content_type and "json" in request.content_type:
+            data = request.get_json(force=True) or {}
+        else:
+            data = request.form.to_dict(flat=True)
+
+        logger.info(f"[doelgroepen] Webhook ontvangen — keys: {list(data.keys())[:10]}")
+
+        # Field extraction — try multiple naming conventions from Jotform
+        def field(keys, default=""):
+            for k in keys:
+                for d_key in data.keys():
+                    if k.lower() in d_key.lower():
+                        v = data[d_key]
+                        if v and str(v).strip() and str(v).strip().lower() != "none":
+                            return str(v).strip()
+            return default
+
+        company_name = field(["bedrijfsnaam", "company", "bedrijf", "organisation"])
+        email_addr   = field(["email", "mail", "e-mail"])
+        sector       = field(["sector"])
+        team_size    = field(["teamgrootte", "team_size", "teamsize", "medewerkers"])
+        challenge    = field(["uitdaging", "challenge", "problem", "probleem", "wervingsuitdaging"])
+
+        if not company_name or not email_addr:
+            logger.warning(f"[doelgroepen] Missende verplichte velden — data: {data}")
+            return jsonify({"error": "company_name en email zijn verplicht"}), 400
+
+        logger.info(f"[doelgroepen] Lead: {company_name} / {email_addr} / {sector}")
+
+        # Save to Supabase and get lead record
+        lead = None
+        if DOELGROEP_AVAILABLE:
+            try:
+                lead = insert_doelgroep_lead(
+                    company_name=company_name,
+                    email=email_addr,
+                    sector=sector,
+                    team_size=team_size,
+                    challenge=challenge,
+                )
+                logger.info(f"[doelgroepen] Supabase insert OK — id={lead.get('id')}")
+            except Exception as e:
+                logger.warning(f"[doelgroepen] Supabase insert fout (doorgaan): {e}")
+                lead = {
+                    "id": None,
+                    "company_name": company_name,
+                    "email": email_addr,
+                    "sector": sector,
+                    "team_size": team_size,
+                    "challenge": challenge,
+                }
+
+            # Fire background pipeline
+            t = threading.Thread(
+                target=process_doelgroep_lead_bg,
+                args=(lead,),
+                daemon=True,
+            )
+            t.start()
+            logger.info(f"[doelgroepen] Background thread gestart voor {email_addr}")
+        else:
+            logger.error("[doelgroepen] Doelgroep processor niet beschikbaar!")
+
+        return jsonify({
+            "success": True,
+            "message": "Doelgroepen rapport aangevraagd — je ontvangt binnen 24 uur een email",
+            "company": company_name,
+            "email": email_addr,
+        }), 200
+
+    except Exception as e:
+        logger.error(f"[doelgroepen] Webhook fout: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/webhook/doelgroepen/test", methods=["POST"])
+def doelgroepen_test():
+    """Test doelgroepen webhook without Jotform — requires admin secret."""
+    if not _check_admin_secret():
+        return jsonify({"error": "Unauthorized"}), 401
+
+    test_lead = {
+        "id": None,
+        "company_name": request.json.get("company_name", "Test Bedrijf B.V."),
+        "email": request.json.get("email", "artsrecruitin@gmail.com"),
+        "sector": request.json.get("sector", "automation"),
+        "team_size": request.json.get("team_size", "51-200"),
+        "challenge": request.json.get("challenge", "We vinden al 6 maanden geen PLC-programmeur"),
+    }
+    logger.info(f"[doelgroepen-test] Triggering pipeline for {test_lead['email']}")
+
+    if DOELGROEP_AVAILABLE:
+        t = threading.Thread(target=process_doelgroep_lead_bg, args=(test_lead,), daemon=True)
+        t.start()
+        return jsonify({"success": True, "message": "Test pipeline gestart", "lead": test_lead}), 200
+    else:
+        return jsonify({"error": "Doelgroep processor niet beschikbaar"}), 503
+
+
 @app.route("/test-email", methods=["GET"])
 def test_email():
     if not _check_admin_secret():
@@ -1542,10 +1679,14 @@ def get_nurture_email_html(email_num, voornaam, functie_titel, analysis_data=Non
     """
     ad = analysis_data or {}
 
+    # Escape user/Claude data before embedding in HTML
+    voornaam = str(html_escape(voornaam))
+    functie_titel = str(html_escape(functie_titel))
+
     # Email 1: VERBETERDE VACATURETEKST
-    improved_text = ad.get('improved_text', '')
+    improved_text = str(html_escape(ad.get('improved_text', '') or ''))
     improved_html = improved_text.replace('\n', '<br>') if improved_text else ''
-    top_improvements = ad.get('top_3_improvements', [])
+    top_improvements = [str(html_escape(str(imp))) for imp in ad.get('top_3_improvements', [])]
     improvements_list = ''.join(f'<li style="margin-bottom:8px;">{imp}</li>' for imp in top_improvements) if top_improvements else ''
 
     # Email 2: MARKTANALYSE + SALARIS
@@ -1555,9 +1696,9 @@ def get_nurture_email_html(email_num, voornaam, functie_titel, analysis_data=Non
     # Email 3: KANAALSTRATEGIE + ACTIEPLAN
     channels = ad.get('recommended_channels', [])
     channels_html = ''.join(
-        f'<tr><td style="padding:10px;border-bottom:1px solid #eee;font-weight:bold;color:#1f2937;">{ch.get("name","")}</td>'
-        f'<td style="padding:10px;border-bottom:1px solid #eee;color:#6b7280;">{ch.get("description","")}</td>'
-        f'<td style="padding:10px;border-bottom:1px solid #eee;"><span style="background:#dcfce7;color:#166534;padding:3px 8px;border-radius:3px;font-size:11px;font-weight:bold;">{ch.get("status","")}</span></td></tr>'
+        f'<tr><td style="padding:10px;border-bottom:1px solid #eee;font-weight:bold;color:#1f2937;">{html_escape(str(ch.get("name","") or ""))}</td>'
+        f'<td style="padding:10px;border-bottom:1px solid #eee;color:#6b7280;">{html_escape(str(ch.get("description","") or ""))}</td>'
+        f'<td style="padding:10px;border-bottom:1px solid #eee;"><span style="background:#dcfce7;color:#166534;padding:3px 8px;border-radius:3px;font-size:11px;font-weight:bold;">{html_escape(str(ch.get("status","") or ""))}</span></td></tr>'
         for ch in channels
     ) if channels else ''
     action_items = ad.get('action_items', [])
@@ -1565,7 +1706,7 @@ def get_nurture_email_html(email_num, voornaam, functie_titel, analysis_data=Non
         f'<tr><td style="padding:10px 0;border-bottom:1px solid #f3f4f6;">'
         f'<table cellpadding="0" cellspacing="0"><tr>'
         f'<td style="width:28px;height:28px;background:#f59e0b;color:white;text-align:center;font-weight:bold;font-size:13px;line-height:28px;border-radius:50%;">{i+1}</td>'
-        f'<td style="padding-left:12px;color:#1f2937;font-size:14px;">{item}</td>'
+        f'<td style="padding-left:12px;color:#1f2937;font-size:14px;">{html_escape(str(item))}</td>'
         f'</tr></table></td></tr>'
         for i, item in enumerate(action_items)
     ) if action_items else ''
@@ -1841,7 +1982,7 @@ def update_deal_nurture_status(deal_id, email_num):
 
         response = requests.put(
             f"{PIPEDRIVE_BASE}/deals/{deal_id}",
-            params={"api_token": PIPEDRIVE_API_TOKEN},
+            headers=_pd_headers(),
             json=update_data,
             timeout=30
         )
@@ -1867,12 +2008,8 @@ def get_deals_for_nurture():
         # Get all deals from pipeline
         response = requests.get(
             f"{PIPEDRIVE_BASE}/deals",
-            params={
-                "api_token": PIPEDRIVE_API_TOKEN,
-                "pipeline_id": PIPELINE_ID,
-                "status": "open",
-                "limit": 500
-            },
+            headers=_pd_headers(),
+            params={"pipeline_id": PIPELINE_ID, "status": "open", "limit": 500},
             timeout=30
         )
 
@@ -1955,7 +2092,7 @@ def get_person_email(person_id):
     try:
         response = requests.get(
             f"{PIPEDRIVE_BASE}/persons/{person_id}",
-            params={"api_token": PIPEDRIVE_API_TOKEN},
+            headers=_pd_headers(),
             timeout=30
         )
 
@@ -1977,7 +2114,7 @@ def should_send_email(deal, email_num):
         # Get custom field values from Pipedrive
         r = requests.get(
             f"{PIPEDRIVE_BASE}/deals/{deal['id']}",
-            params={"api_token": PIPEDRIVE_API_TOKEN},
+            headers=_pd_headers(),
             timeout=30
         )
         deal_data = r.json().get('data', {})
@@ -1991,11 +2128,7 @@ def should_send_email(deal, email_num):
         # Check timing
         rapport_date = deal_data.get(FIELD_RAPPORT_VERZONDEN)
         if rapport_date:
-            try:
-                from dateutil import parser
-                rapport_dt = parser.parse(rapport_date)
-            except (ImportError, ValueError):
-                rapport_dt = datetime.fromisoformat(rapport_date.split('T')[0])
+            rapport_dt = datetime.fromisoformat(rapport_date.split('T')[0])
 
             days_since = (datetime.now() - rapport_dt).days
             required_days = EMAIL_SCHEDULE[email_num]['day']
@@ -2017,20 +2150,20 @@ def mark_email_sent(deal_id, email_num):
         # Get current status
         r = requests.get(
             f"{PIPEDRIVE_BASE}/deals/{deal_id}",
-            params={"api_token": PIPEDRIVE_API_TOKEN},
+            headers=_pd_headers(),
             timeout=30
         )
         current_status = r.json().get('data', {}).get(FIELD_EMAIL_SEQUENCE_STATUS, '')
 
-        # Add this email number
-        sent = set(current_status.split(',')) if current_status else set()
-        sent.add(str(email_num))
-        new_status = ','.join(sorted(sent))
+        # Add this email number — filter out non-numeric values (e.g. legacy "Actief")
+        existing = {v for v in current_status.split(',') if v.isdigit()} if current_status else set()
+        existing.add(str(email_num))
+        new_status = ','.join(sorted(existing, key=int))
 
         # Update deal
         requests.patch(
             f"{PIPEDRIVE_BASE}/deals/{deal_id}",
-            params={"api_token": PIPEDRIVE_API_TOKEN},
+            headers=_pd_headers(),
             json={
                 FIELD_EMAIL_SEQUENCE_STATUS: new_status,
                 FIELD_LAATSTE_EMAIL: email_num
@@ -2110,10 +2243,10 @@ def start_nurture_deal(deal_id):
 
         response = requests.put(
             f"{PIPEDRIVE_BASE}/deals/{deal_id}",
-            params={"api_token": PIPEDRIVE_API_TOKEN},
+            headers=_pd_headers(),
             json={
                 FIELD_RAPPORT_VERZONDEN: today,
-                FIELD_EMAIL_SEQUENCE_STATUS: "Actief"
+                FIELD_EMAIL_SEQUENCE_STATUS: ""  # empty = sequence active, not yet sent
             },
             timeout=30
         )
@@ -2131,19 +2264,22 @@ def start_nurture_deal(deal_id):
 
 
 # Background scheduler for nurture emails
+_NL_TZ = zoneinfo.ZoneInfo("Europe/Amsterdam")
+
+
 def nurture_scheduler():
-    """Background thread that checks for nurture emails every hour (FIXED: prevents duplicate sends)"""
+    """Background thread that checks for nurture emails (9 AM + 2 PM Dutch time)."""
     last_run_hour = -1  # Track which hour we already ran
 
     while True:
         try:
-            # Run at specific times (9 AM, 2 PM Dutch time)
-            now = datetime.now()
+            # Use Dutch timezone so schedule is correct regardless of server timezone (Render = UTC)
+            now = datetime.now(_NL_TZ)
             current_hour = now.hour
 
-            # Only run once per hour, at 9 AM and 2 PM
+            # Only run once per hour, at 9 AM and 2 PM Dutch time
             if current_hour in [9, 14] and current_hour != last_run_hour:
-                logger.info(f"⏰ Scheduled nurture check running at {now.strftime('%H:%M:%S')}")
+                logger.info(f"⏰ Scheduled nurture check running at {now.strftime('%H:%M %Z')}")
                 process_nurture_emails()
                 last_run_hour = current_hour
 
@@ -2241,10 +2377,11 @@ def test_nurture_email(email_num):
     return jsonify({"success": success, "email_num": email_num, "to": to}), 200 if success else 500
 
 
-if __name__ == "__main__":
-    # Start background scheduler for nurture emails
-    scheduler_thread = threading.Thread(target=nurture_scheduler, daemon=True)
-    scheduler_thread.start()
-    logger.info("🚀 Nurture scheduler started")
+# Start nurture scheduler at module level so it runs under gunicorn (not just __main__)
+_nurture_scheduler_thread = threading.Thread(target=nurture_scheduler, daemon=True, name="nurture-scheduler")
+_nurture_scheduler_thread.start()
+logger.info("🚀 Nurture scheduler started (module-level)")
 
+
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
