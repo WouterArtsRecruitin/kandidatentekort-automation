@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V5.2
-Deploy: Render.com | Updated: 2026-04-10
+KANDIDATENTEKORT.NL - WEBHOOK AUTOMATION V5.5
+Deploy: Render.com | Updated: 2026-04-12
 - V2: Pipedrive organization, person, deal creation
 - V3: Claude AI vacancy analysis + report email
 - V3.1: Professional report template with Before/After comparison
@@ -11,6 +11,10 @@ Deploy: Render.com | Updated: 2026-04-10
         Before/After comparison, Full improved text, Numbered checklist, Bonus tips
 - V4.1: OUTLOOK COMPATIBLE - Full table-based layout, MSO conditionals, no flex/gradients
 - V5.1: TRUST-FIRST EMAIL NURTURE - 8 automated follow-up emails over 30 days
+- V5.2: Async webhook (502 fix, background thread)
+- V5.3: Hosted rapport (Jinja2 + Supabase Storage + /rapport proxy)
+- V5.4: Prompt tuning + nurture drip + design polish
+- V5.5: Security & bug audit — 10 fixes (XSS, Bearer auth, nurture scheduler, pypdf)
 """
 
 import os
@@ -2037,7 +2041,7 @@ def mark_email_sent(deal_id, email_num):
         new_status = ','.join(sorted(existing, key=int))
 
         # Update deal
-        requests.put(
+        resp = requests.put(
             f"{PIPEDRIVE_BASE}/deals/{deal_id}",
             headers=_pd_headers(),
             json={
@@ -2046,7 +2050,10 @@ def mark_email_sent(deal_id, email_num):
             },
             timeout=30
         )
-        logger.info(f"✅ Deal {deal_id}: Marked email {email_num} as sent")
+        if resp.status_code == 200:
+            logger.info(f"✅ Deal {deal_id}: Marked email {email_num} as sent")
+        else:
+            logger.warning(f"⚠️ Deal {deal_id}: Failed to mark email {email_num} — {resp.status_code}")
     except Exception as e:
         logger.error(f"❌ Error marking email sent: {e}")
 
