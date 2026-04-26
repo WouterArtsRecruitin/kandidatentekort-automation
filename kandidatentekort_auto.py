@@ -35,6 +35,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, jsonify
 from markupsafe import escape as html_escape
+import supabase
 
 # Setup logging FIRST before any logger usage
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -79,6 +80,8 @@ PIPEDRIVE_BASE = "https://api.pipedrive.com/v1"
 PIPELINE_ID = 4
 STAGE_ID = 21
 ADMIN_SECRET = os.getenv('ADMIN_SECRET', '')  # Required for test/debug/nurture endpoints
+SB_URL = os.getenv('SUPABASE_URL', 'https://vrzwupnqwodqdtnmtwse.supabase.co')
+SB_KEY = os.getenv('SUPABASE_SERVICE_KEY', '')
 
 
 def _pd_headers():
@@ -2264,6 +2267,91 @@ def test_nurture_email(email_num):
 _nurture_scheduler_thread = threading.Thread(target=nurture_scheduler, daemon=True, name="nurture-scheduler")
 _nurture_scheduler_thread.start()
 logger.info("🚀 Nurture scheduler started (module-level)")
+
+
+# Rating/Feedback Endpoints
+@app.route("/feedback", methods=["POST"])
+def submit_rating():
+    """Submit rapport rating and fire GA4 + Meta events"""
+    try:
+        data = request.get_json() or {}
+        lead_email = data.get("email", "").strip()
+        rating = data.get("rating")
+
+        if not lead_email or "@" not in lead_email or not isinstance(rating, int) or rating < 1 or rating > 5:
+            return jsonify({"error": "Invalid email or rating"}), 400
+
+        rapport_date = datetime.now(zoneinfo.ZoneInfo("Europe/Amsterdam")).isoformat()
+
+        sb = supabase.create_client(SB_URL, SB_KEY)
+        sb.table("rapport_feedback").insert({
+            "lead_email": lead_email,
+            "rating": rating,
+            "rapport_date": rapport_date,
+            "product": "kandidatentekort"
+        }).execute()
+
+        ga_event = {
+            "measurement_id": "G-LKNTCG74ME",
+            "api_secret": os.getenv("GA4_MEASUREMENT_SECRET", ""),
+            "events": [{
+                "name": "rapport_rating",
+                "params": {
+                    "rating_value": rating,
+                    "user_id": lead_email,
+                    "event_category": "feedback",
+                    "product": "kandidatentekort"
+                }
+            }]
+        }
+        requests.post("https://www.google-analytics.com/mp/collect", json=ga_event, timeout=5)
+
+        meta_event = {
+            "data": [{
+                "event_name": "Rating",
+                "event_time": int(time.time()),
+                "user_data": {
+                    "em": hashlib.sha256(lead_email.lower().encode()).hexdigest()
+                },
+                "custom_data": {"value": rating, "currency": "EUR"}
+            }]
+        }
+        requests.post(
+            f"https://graph.facebook.com/v19.0/{os.getenv('META_PIXEL_ID')}/events",
+            headers={"Authorization": f"Bearer {os.getenv('META_CAPI_TOKEN')}"},
+            json=meta_event,
+            timeout=5
+        )
+
+        return jsonify({"success": True, "rating": rating}), 200
+    except Exception as e:
+        logger.error(f"Rating submission error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/rating-stats", methods=["GET"])
+def get_rating_stats():
+    """Get rating statistics for landing page widget"""
+    try:
+        sb = supabase.create_client(SB_URL, SB_KEY)
+        data = sb.table("rapport_feedback").select("rating").eq("product", "kandidatentekort").execute().data
+
+        if not data:
+            return jsonify({"average": 0, "total": 0, "distribution": {}, "message": "Nog geen reviews"}), 200
+
+        ratings = [r["rating"] for r in data]
+        avg = sum(ratings) / len(ratings) if ratings else 0
+        distribution = {str(i): ratings.count(i) for i in range(1, 6)}
+
+        return jsonify({
+            "average": round(avg, 1),
+            "total": len(ratings),
+            "distribution": distribution,
+            "message": f"{'★' * round(avg)}{'☆' * (5 - round(avg))} {avg:.1f}/5 sterren van {len(ratings)} beoordelingen"
+        }), 200
+    except Exception as e:
+        logger.error(f"Rating stats error: {e}")
+        return jsonify({"average": 0, "total": 0, "distribution": {}, "message": ""}), 200
 
 
 if __name__ == "__main__":
