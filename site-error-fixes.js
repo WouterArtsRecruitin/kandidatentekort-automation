@@ -209,7 +209,7 @@
         // Simple fallback if popup fails
         const email = prompt('Voor een snelle analyse, wat is je email adres?');
         if (email && email.includes('@')) {
-            window.open(`mailto:wouter@recruitin.nl?subject=Vacature Analyse Aanvraag&body=Hoi Wouter,%0D%0A%0D%0AIk zou graag een gratis analyse van mijn vacature willen.%0D%0A%0D%0AMijn email: ${email}%0D%0A%0D%0AGroeten`, '_blank');
+            window.open(`mailto:wouter@kandidatentekort.nl?subject=Vacature Analyse Aanvraag&body=Hoi Wouter,%0D%0A%0D%0AIk zou graag een gratis analyse van mijn vacature willen.%0D%0A%0D%0AMijn email: ${email}%0D%0A%0D%0AGroeten`, '_blank');
         }
     }
     
