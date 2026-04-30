@@ -1,0 +1,49 @@
+{
+  "overall_score": 72,
+  "samenvatting": "Sterke vacature — duidelijke verantwoordelijkheden, concrete projecten, salarisrange aanwezig. Verbeterpunten zitten in employer branding (cultuur blijft vaag) en CTA (te zwak). Met deze 2 fixes til je conversie naar +15% en blijft de vacature concurrerend in een markt met 19 alternatieven.",
+  "score_section": "Titel: 8/10 - Omschrijving: 8/10 - Salaris: 7/10 - Branding: 5/10",
+  "categories": [
+    {"name": "Vacaturetitel & Vindbaarheid", "score": 80, "status": "ok"},
+    {"name": "Functieomschrijving", "score": 78, "status": "ok"},
+    {"name": "Salaris & Arbeidsvoorwaarden", "score": 70, "status": "ok"},
+    {"name": "Employer Branding", "score": 55, "status": "warning"},
+    {"name": "Kandidaat Experience", "score": 75, "status": "ok"},
+    {"name": "Kanaalstrategie", "score": 68, "status": "ok"},
+    {"name": "Concurrentiekracht", "score": 72, "status": "ok"},
+    {"name": "SEO & Online Vindbaarheid", "score": 82, "status": "ok"}
+  ],
+  "market_analysis": {
+    "competing_vacancies": 19,
+    "potential_candidates": 78,
+    "market_median_salary": "€6.200",
+    "supply_demand_ratio": "1.6x"
+  },
+  "salary_benchmark": {
+    "offered_range": "€5.500 - €7.200",
+    "market_range": "€5.800 - €7.500",
+    "difference": "-3% onder markt (mediaan)",
+    "warning": ""
+  },
+  "top_3_improvements": [
+    "Maak werkgeversverhaal concreet (oprichtingsjaar, omzet, projectportfolio link) — verwachte impact +12% kwaliteit-fit",
+    "Versterk CTA: 'Stuur CV naar...' is passief — wijzig naar 'Bel Mark direct: 06-...' — verwachte impact +18% directe respons",
+    "Voeg een echte projectfoto + werkomgeving-impressie toe — verwachte impact +8% senior-conversie"
+  ],
+  "improved_text": "Bouw jij liever de plannen waar de stad over praat — i.p.v. zoveelste rij-eengezinswoningen? Als Projectleider bij Voorbeeld B.V. trek je projecten van €5-25M door alle fasen heen, van tender tot oplevering. [Volledige tekst van 410 woorden in volledig rapport]",
+  "action_items": [
+    "Voeg een 'Over ons' sectie toe met 3 concrete cijfers (omzet, FTE, opgeleverde projecten/jaar)",
+    "Wijzig CTA naar persoonlijke contactopname (naam + telefoon + LinkedIn van hiring manager)",
+    "Voeg portfolio-link toe — projectleiders willen zien wat ze gaan bouwen",
+    "Specificeer auto-regeling (lease-categorie of budget) — nu staat alleen 'auto van de zaak'",
+    "Activeer LinkedIn InMail-campagne richting 78 senior projectleiders in Gelderland"
+  ],
+  "recommended_channels": [
+    {"name": "LinkedIn Recruiter Outreach", "description": "78 doelgroep-kandidaten in Gelderland — directe benadering werkt", "status": "AANBEVOLEN"},
+    {"name": "Bouwendnederland Vacaturebank", "description": "Senior projectleiders bezoeken deze bank wekelijks — sector-specifiek", "status": "AANBEVOLEN"},
+    {"name": "Cobouw + Bouw.nl", "description": "Vakmedia-pakket bereikt passieve kandidaten in management", "status": "OPTIONEEL"}
+  ],
+  "bonus_tips": [
+    "Senior projectleiders bekijken 8-12 vacatures voor ze reageren — wees onderscheidend in de eerste 200 woorden",
+    "Vermeld het projectportfolio bij naam (Beneluxhaven, Stationsplein, etc.) — referenties verkopen beter dan adjectieven"
+  ]
+}

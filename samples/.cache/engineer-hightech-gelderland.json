@@ -1,0 +1,49 @@
+{
+  "overall_score": 53,
+  "samenvatting": "Technisch sterke vacature, maar geschreven door een ingenieur voor een ingenieur — ontoegankelijk voor recruiters en headhunters. Te veel jargon, geen werkgeversverhaal, salarisrange ontbreekt. In high-tech Gelderland is competitie moordend (4.8x markt) — heroriëntatie naar kandidaat-perspectief brengt +30%.",
+  "score_section": "Titel: 6/10 - Omschrijving: 7/10 - Salaris: 3/10 - Branding: 4/10",
+  "categories": [
+    {"name": "Vacaturetitel & Vindbaarheid", "score": 60, "status": "warning"},
+    {"name": "Functieomschrijving", "score": 65, "status": "ok"},
+    {"name": "Salaris & Arbeidsvoorwaarden", "score": 35, "status": "bad"},
+    {"name": "Employer Branding", "score": 45, "status": "warning"},
+    {"name": "Kandidaat Experience", "score": 52, "status": "warning"},
+    {"name": "Kanaalstrategie", "score": 50, "status": "warning"},
+    {"name": "Concurrentiekracht", "score": 48, "status": "warning"},
+    {"name": "SEO & Online Vindbaarheid", "score": 70, "status": "ok"}
+  ],
+  "market_analysis": {
+    "competing_vacancies": 64,
+    "potential_candidates": 92,
+    "market_median_salary": "€5.400",
+    "supply_demand_ratio": "4.8x"
+  },
+  "salary_benchmark": {
+    "offered_range": "Niet vermeld",
+    "market_range": "€4.700 - €6.300",
+    "difference": "Onbekend (geen salaris vermeld)",
+    "warning": "High-tech engineers vergelijken minimaal 5 vacatures — zonder salaris val je bij stap 1 uit."
+  },
+  "top_3_improvements": [
+    "Voeg salarisrange toe (€4.700-€6.300) — high-tech is salaris-gedreven, geen-vermelding = -42% sollicitaties",
+    "Vertaal jargon naar impact ('FPGA-development' → 'het brein van de machine bouwen') — verwachte impact +20% breed-bereik",
+    "Voeg 'wat los je op' sectie toe i.p.v. 'wat doe je' — engineers willen zinvolle projecten"
+  ],
+  "improved_text": "Wat als jouw code straks meedraait in een chip die wereldwijd in 80% van de smartphones zit? Als Engineer bij Voorbeeld B.V. werk je op het snijvlak van mechatronica en embedded systems — voor klanten als ASML, Philips en Demcon. [Volledige tekst van 360 woorden in volledig rapport]",
+  "action_items": [
+    "Voeg salarisrange €4.700-€6.300 toe — high-tech zonder salaris is signaal naar kandidaat",
+    "Schrijf opening om naar impact-statement (waar werkt je werk uiteindelijk in?)",
+    "Vermeld minimaal 3 klanten of eindproducten (ASML, Philips, Demcon — als toepasselijk)",
+    "Vervang 'jij hebt 5+ jaar ervaring' door 'je hebt eerder gewerkt aan X type project'",
+    "Activeer LinkedIn én Honeypot voor passieve high-tech engineers (niet op Indeed)"
+  ],
+  "recommended_channels": [
+    {"name": "Honeypot.io (passieve engineers)", "description": "92 senior tech-kandidaten in Gelderland — 70% passief", "status": "AANBEVOLEN"},
+    {"name": "LinkedIn Recruiter + InMail", "description": "Specifiek targeting op ASML, Philips, Demcon alumni", "status": "AANBEVOLEN"},
+    {"name": "Tweakers Vacaturebank", "description": "Tech-affiniteit doelgroep — kleine maar gerichte instroom", "status": "OPTIONEEL"}
+  ],
+  "bonus_tips": [
+    "High-tech engineers wisselen gemiddeld elke 3-4 jaar — timing van outreach is kritiek (richt op 30-36 maanden in huidige rol)",
+    "Mention concrete tech-stack (specifieke chips, talen, tools) — versimpelen werkt averechts in deze doelgroep"
+  ]
+}

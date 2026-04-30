@@ -1,0 +1,49 @@
+{
+  "overall_score": 47,
+  "samenvatting": "Vacature scoort onder gemiddeld door generieke titel en gebrek aan werkgeversverhaal. Markt is extreem krap (8.2x meer vraag dan aanbod) — alleen scherp positioneren werkt nog. Met salarisrange + concrete doorgroei-route schatten we +50% sollicitaties binnen 2 weken.",
+  "score_section": "Titel: 4/10 - Omschrijving: 5/10 - Salaris: 4/10 - Branding: 3/10",
+  "categories": [
+    {"name": "Vacaturetitel & Vindbaarheid", "score": 45, "status": "warning"},
+    {"name": "Functieomschrijving", "score": 55, "status": "warning"},
+    {"name": "Salaris & Arbeidsvoorwaarden", "score": 40, "status": "bad"},
+    {"name": "Employer Branding", "score": 32, "status": "bad"},
+    {"name": "Kandidaat Experience", "score": 50, "status": "warning"},
+    {"name": "Kanaalstrategie", "score": 48, "status": "warning"},
+    {"name": "Concurrentiekracht", "score": 38, "status": "bad"},
+    {"name": "SEO & Online Vindbaarheid", "score": 65, "status": "ok"}
+  ],
+  "market_analysis": {
+    "competing_vacancies": 87,
+    "potential_candidates": 56,
+    "market_median_salary": "€3.400",
+    "supply_demand_ratio": "8.2x"
+  },
+  "salary_benchmark": {
+    "offered_range": "€2.900 - €3.800",
+    "market_range": "€3.200 - €4.300",
+    "difference": "-12% onder markt (mediaan)",
+    "warning": "In een 8.2x-markt verdwijnen onder-markt vacatures binnen 14 dagen onderin het zoekresultaat."
+  },
+  "top_3_improvements": [
+    "Verhoog salarisrange naar €3.200-€4.300 — verwachte impact +40% kwalitatieve sollicitaties",
+    "Maak titel specifiek: 'Servicemonteur Elektrotechniek' i.p.v. 'Monteur' — verwachte impact +28% vindbaarheid",
+    "Voeg doorgroei-route toe (junior → medior → senior met salarissen) — verwachte impact +22% conversie senior-kandidaten"
+  ],
+  "improved_text": "Liever onder werktijd je handen vies maken dan achter een scherm zitten? Als Servicemonteur Elektrotechniek bij Voorbeeld B.V. werk je dagelijks bij utiliteits- en industriële klanten in Gelderland en Overijssel — geen dag hetzelfde. [Volledige tekst van 380 woorden in volledig rapport]",
+  "action_items": [
+    "Verhoog salarisrange minimaal 10% (€3.200-€4.300) of verlies kandidaten aan concurrent",
+    "Verander titel naar 'Servicemonteur Elektrotechniek' — voeg specialisatie toe",
+    "Voeg doorgroei-pad toe met salaris-mijlpalen (junior €3.200 → senior €4.300)",
+    "Vermeld 5 grote klanten of projecten bij naam (nu te abstract)",
+    "Activeer LinkedIn-recruitment naast Indeed (bereikt passieve kandidaten)"
+  ],
+  "recommended_channels": [
+    {"name": "Indeed Sponsored + Search Boost", "description": "8.2x markt vraagt om gerichte boost — bereik 56 actieve monteurs", "status": "AANBEVOLEN"},
+    {"name": "TikTok / Reels recruitment", "description": "Jonge monteurs (22-30) zitten niet meer op Indeed — video werkt", "status": "AANBEVOLEN"},
+    {"name": "Bouw- en Installatie vakbladen", "description": "Print + online combo bereikt ervaren monteurs", "status": "OPTIONEEL"}
+  ],
+  "bonus_tips": [
+    "Monteurs lezen vacatures op de bank na werk — mobile-first format is cruciaal",
+    "Vermeld type voertuig (Volkswagen Crafter, Ford Transit) — herkenning werkt sterker dan 'auto van de zaak'"
+  ]
+}

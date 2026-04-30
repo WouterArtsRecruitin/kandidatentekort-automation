@@ -1,0 +1,49 @@
+{
+  "overall_score": 58,
+  "samenvatting": "Solide structuur en duidelijke takenlijst (sterk), maar geen salarisindicatie en zwak werkgeversverhaal kosten je naar schatting 35-45% van de potentiële sollicitanten. Voeg salaris (€3.800-€5.200) toe en verbeter de openingsalinea — dat tilt de score binnen een week naar 75+.",
+  "score_section": "Titel: 7/10 - Omschrijving: 6/10 - Salaris: 3/10 - Branding: 4/10",
+  "categories": [
+    {"name": "Vacaturetitel & Vindbaarheid", "score": 70, "status": "ok"},
+    {"name": "Functieomschrijving", "score": 65, "status": "ok"},
+    {"name": "Salaris & Arbeidsvoorwaarden", "score": 30, "status": "bad"},
+    {"name": "Employer Branding", "score": 42, "status": "bad"},
+    {"name": "Kandidaat Experience", "score": 60, "status": "warning"},
+    {"name": "Kanaalstrategie", "score": 55, "status": "warning"},
+    {"name": "Concurrentiekracht", "score": 50, "status": "warning"},
+    {"name": "SEO & Online Vindbaarheid", "score": 75, "status": "ok"}
+  ],
+  "market_analysis": {
+    "competing_vacancies": 38,
+    "potential_candidates": 142,
+    "market_median_salary": "€4.500",
+    "supply_demand_ratio": "3.7x"
+  },
+  "salary_benchmark": {
+    "offered_range": "Niet vermeld",
+    "market_range": "€3.800 - €5.200",
+    "difference": "Onbekend (geen salaris vermeld)",
+    "warning": "Vacatures zonder salarisindicatie krijgen ~38% minder sollicitaties (Indeed Hiring Lab 2025)."
+  },
+  "top_3_improvements": [
+    "Voeg concrete salarisrange toe (€3.800-€5.200) — verwachte impact +35-45% sollicitaties",
+    "Herschrijf opening: van 'Wij zoeken' naar kandidaat-perspectief — verwachte impact +18% doorklik op vacaturetitel",
+    "Maak werkgeversverhaal concreet (omzet, projecten, team-grootte) — verwachte impact +12% kwaliteit-fit"
+  ],
+  "improved_text": "Maak jij liever het bouwplan voordat de eerste schop de grond in gaat? Als Werkvoorbereider bij Voorbeeld B.V. zit je vóór elke uitvoeringsfase aan de planningstafel — niet erna. [Volledige tekst van 320 woorden in volledig rapport]",
+  "action_items": [
+    "Voeg vandaag een salarisrange toe (€3.800-€5.200 bruto/maand)",
+    "Herschrijf de openingsalinea — geen 'Wij zoeken', wel 'Maak jij liever...'",
+    "Voeg 3 concrete projectvoorbeelden toe uit afgelopen 12 maanden",
+    "Splits harde eisen en nice-to-haves zichtbaar — bullets met label",
+    "Vermeld contactpersoon met naam en telefoonnummer (geen info@)"
+  ],
+  "recommended_channels": [
+    {"name": "Werk.nl + Bouwendnederland", "description": "Bereik 142 actieve werkzoekenden in Gelderland — gratis voor MKB", "status": "AANBEVOLEN"},
+    {"name": "LinkedIn Jobs Premium", "description": "Gericht op senior werkvoorbereiders met 5+ jaar bouw-ervaring", "status": "AANBEVOLEN"},
+    {"name": "Indeed Sponsored", "description": "Boost je vindbaarheid bij 38 concurrerende vacatures", "status": "OPTIONEEL"}
+  ],
+  "bonus_tips": [
+    "Bouw-werkvoorbereiders zoeken vaak op functietitel + 'thuiswerken' — vermeld dit expliciet als het kan",
+    "Q2 is piekseizoen voor bouwprojecten — wachten met posten kost je kandidaten aan concurrenten"
+  ]
+}
