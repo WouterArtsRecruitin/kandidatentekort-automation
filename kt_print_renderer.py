@@ -139,7 +139,7 @@ p { margin: 0 0 8pt }
 .cover .footer-band .right { font-family: 'JetBrains Mono', monospace; font-size: 8pt; color: """ + MUTED + """; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap }
 
 /* HIGHLIGHTS PAGE ────────────────── */
-.highlight-block { padding: 11pt 14pt; border: 1px solid """ + BORDER + """; border-radius: 8pt; margin-bottom: 8pt; break-inside: avoid; page-break-inside: avoid }
+.highlight-block { padding: 11pt 14pt; border: 1px solid """ + BORDER + """; border-radius: 8pt; margin-bottom: 8pt }
 .highlight-block .h-label { font-family: 'JetBrains Mono', monospace; font-size: 8pt; font-weight: 700; color: """ + ACCENT + """; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 3pt }
 .highlight-block .h-title { font-size: 12pt; font-weight: 800; letter-spacing: -0.015em; margin-bottom: 6pt }
 
@@ -164,12 +164,12 @@ p { margin: 0 0 8pt }
 .cta-page .url { font-family: 'JetBrains Mono', monospace; font-size: 9pt; color: """ + MUTED + """; letter-spacing: 0.05em; margin-top: 10pt }
 
 /* CATEGORY BAR ────────────────────── */
-.cat-row { margin: 2pt 0 }
-.cat-row .label-row { display: table; width: 100%; margin-bottom: 2pt }
-.cat-row .name { display: table-cell; font-size: 9pt; font-weight: 600; color: """ + INK + """; vertical-align: middle }
-.cat-row .score { display: table-cell; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 8.5pt; font-weight: 700; vertical-align: middle }
-.cat-row .track { background: #F3F4F6; border-radius: 3pt; height: 5pt; overflow: hidden }
-.cat-row .fill { height: 5pt; border-radius: 3pt }
+.cat-row { margin: 1pt 0 }
+.cat-row .label-row { display: table; width: 100%; margin-bottom: 1pt }
+.cat-row .name { display: table-cell; font-size: 8.5pt; font-weight: 600; color: """ + INK + """; vertical-align: middle }
+.cat-row .score { display: table-cell; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 8pt; font-weight: 700; vertical-align: middle }
+.cat-row .track { background: #F3F4F6; border-radius: 2pt; height: 4pt; overflow: hidden }
+.cat-row .fill { height: 4pt; border-radius: 2pt }
 
 /* ACTION ITEMS ──────────────────── */
 .action-list { margin: 0; padding: 0; list-style: none }
@@ -186,12 +186,27 @@ p { margin: 0 0 8pt }
 .channel-row .ch-tag { font-family: 'JetBrains Mono', monospace; font-size: 8pt; font-weight: 700; color: """ + ACCENT + """; letter-spacing: 0.1em; text-transform: uppercase; text-align: right; white-space: nowrap; padding-left: 10pt; width: 90pt }
 
 /* SALARY VS MARKET ───────────────── */
-.salary-compare { display: table; width: 100%; margin-top: 4pt }
-.salary-compare > div { display: table-cell; padding: 8pt 10pt; vertical-align: top; width: 50% }
-.salary-compare .sc-label { font-family: 'JetBrains Mono', monospace; font-size: 8pt; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: """ + MUTED + """; margin-bottom: 3pt }
-.salary-compare .sc-val { font-size: 12.5pt; font-weight: 800; color: """ + INK + """; letter-spacing: -0.01em; line-height: 1.15 }
-.salary-compare .sc-diff { font-size: 9pt; font-weight: 700; margin-top: 5pt }
-.salary-compare .sc-warn { font-size: 8.5pt; color: """ + RED + """; margin-top: 5pt; line-height: 1.4 }
+.salary-vis { margin-top: 4pt; }
+.salary-vis .sv-track { position: relative; height: 14pt; background: #F3F4F6; border-radius: 4pt; overflow: hidden }
+.salary-vis .sv-market { position: absolute; top: 0; bottom: 0; background: rgba(255,0,204,0.18); border-left: 1.5pt solid """ + ACCENT + """; border-right: 1.5pt solid """ + ACCENT + """ }
+.salary-vis .sv-offered { position: absolute; top: 2pt; bottom: 2pt; background: """ + ACCENT + """; border-radius: 2pt; box-shadow: 0 0 0 0.5pt #fff inset }
+.salary-vis .sv-scale { display: table; width: 100%; margin-top: 2pt; font-family: 'JetBrains Mono', monospace; font-size: 7pt; color: """ + MUTED + """; letter-spacing: 0.06em }
+.salary-vis .sv-scale > span { display: table-cell }
+.salary-vis .sv-scale .right { text-align: right }
+.salary-vis .sv-keys { display: table; width: 100%; margin-top: 6pt; font-size: 8pt; line-height: 1.3; border-spacing: 8pt 0 }
+.salary-vis .sv-keys > div { display: table-cell; padding: 4pt 6pt; vertical-align: top; width: 50%; background: """ + LIGHT + """; border-radius: 4pt }
+.salary-vis .sv-keys .sv-k-lbl { font-family: 'JetBrains Mono', monospace; font-size: 7pt; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: """ + MUTED + """; margin-bottom: 1pt }
+.salary-vis .sv-keys .sv-k-market .sv-k-lbl::before { content: "▭ "; color: """ + ACCENT + """ }
+.salary-vis .sv-keys .sv-k-offered .sv-k-lbl::before { content: "▮ "; color: """ + ACCENT + """ }
+.salary-vis .sv-keys .sv-k-val { font-weight: 800; color: """ + INK + """; font-size: 10pt; letter-spacing: -0.01em; line-height: 1.2 }
+.salary-vis .sv-keys .sv-k-diff { font-size: 7.5pt; font-weight: 700; margin-top: 1pt }
+.salary-vis .sv-warn { font-size: 8pt; color: """ + RED + """; margin-top: 5pt; line-height: 1.35; font-style: italic }
+
+/* ACTION-LIST locked-teaser */
+.action-list li.locked { background: rgba(255,0,204,0.04) }
+.action-list li.locked .t { color: """ + MUTED + """; font-style: italic; opacity: 0.7 }
+.action-list li.locked .n { color: """ + ACCENT + """; opacity: 0.6 }
+.action-list li.locked .lock-tag { display: table-cell; vertical-align: middle; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 7pt; font-weight: 700; color: """ + ACCENT + """; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; padding-left: 8pt; width: 88pt }
 
 /* Print color forcing */
 .kpi-grid td, .callout, .usp-grid > div, .cover .sample-banner, .cta-button, .highlight-block, .cat-row .fill, .salary-compare > div { -webkit-print-color-adjust: exact; print-color-adjust: exact }
@@ -233,6 +248,94 @@ def _status_color(status: str, score: int) -> str:
     if status == "warning" or score >= 45:
         return AMBER
     return RED
+
+
+def _parse_salary_range(text: str) -> tuple[int, int] | None:
+    """Parse '€3.800 - €5.200' / '€2.900 - €3.800' → (3800, 5200). Return None if no parse."""
+    import re
+    if not text:
+        return None
+    nums = re.findall(r"€\s*(\d{1,3}(?:[\.,]\d{3})*)", text)
+    if len(nums) < 2:
+        return None
+    try:
+        vals = [int(n.replace(".", "").replace(",", "")) for n in nums[:2]]
+        if vals[0] > vals[1]:
+            vals.reverse()
+        return vals[0], vals[1]
+    except ValueError:
+        return None
+
+
+def _salary_visual(offered: str, market: str, diff: str, warning: str) -> str:
+    """Render visuele salary range-bar. Markt als lichtmagenta band, aanbod als solid magenta overlay."""
+    market_parsed = _parse_salary_range(market)
+    offered_parsed = _parse_salary_range(offered)
+
+    if not market_parsed:
+        # fallback: text-only (geen parsable data)
+        diff_color = RED if "onder" in (diff or "").lower() else (GREEN if "boven" in (diff or "").lower() else MUTED)
+        warn_html = f'<div class="sv-warn">⚠ {warning}</div>' if warning else ''
+        return f"""
+        <div class="salary-vis">
+          <div class="sv-keys">
+            <div class="sv-k-market">
+              <div class="sv-k-lbl">Markt</div>
+              <div class="sv-k-val">{market or '—'}</div>
+            </div>
+            <div class="sv-k-offered">
+              <div class="sv-k-lbl">Jouw aanbod</div>
+              <div class="sv-k-val">{offered or 'Niet vermeld'}</div>
+              <div class="sv-k-diff" style="color:{diff_color}">{diff or ''}</div>
+            </div>
+          </div>
+          {warn_html}
+        </div>"""
+
+    market_min, market_max = market_parsed
+    scale_min = 0
+    scale_max = int(market_max * 1.25)
+    market_left = (market_min - scale_min) / (scale_max - scale_min) * 100
+    market_right = (market_max - scale_min) / (scale_max - scale_min) * 100
+    market_width = market_right - market_left
+
+    offered_html = ""
+    if offered_parsed:
+        o_min, o_max = offered_parsed
+        o_left = (o_min - scale_min) / (scale_max - scale_min) * 100
+        o_right = (o_max - scale_min) / (scale_max - scale_min) * 100
+        o_width = max(2, o_right - o_left)
+        offered_html = f'<div class="sv-offered" style="left:{o_left:.1f}%;width:{o_width:.1f}%"></div>'
+    else:
+        # geen aanbod: toon "?" marker midden in scale
+        offered_html = ''
+
+    diff_color = RED if "onder" in (diff or "").lower() else (GREEN if "boven" in (diff or "").lower() else MUTED)
+    warn_html = f'<div class="sv-warn">⚠ {warning}</div>' if warning else ''
+
+    return f"""
+    <div class="salary-vis">
+      <div class="sv-track">
+        <div class="sv-market" style="left:{market_left:.1f}%;width:{market_width:.1f}%"></div>
+        {offered_html}
+      </div>
+      <div class="sv-scale">
+        <span>€{scale_min // 1000}k</span>
+        <span class="right">€{scale_max // 1000}k</span>
+      </div>
+      <div class="sv-keys">
+        <div class="sv-k-market">
+          <div class="sv-k-lbl">Markt</div>
+          <div class="sv-k-val">{market}</div>
+        </div>
+        <div class="sv-k-offered">
+          <div class="sv-k-lbl">Jouw aanbod</div>
+          <div class="sv-k-val">{offered if offered_parsed else 'Niet vermeld'}</div>
+          <div class="sv-k-diff" style="color:{diff_color}">{diff or ''}</div>
+        </div>
+      </div>
+      {warn_html}
+    </div>"""
 
 
 # ── Page 01 — Cover + executive samenvatting ─────────────────────────────────
@@ -340,39 +443,33 @@ def _page_highlights(analysis: dict) -> str:
       {cat_rows}
     </div>"""
 
-    # Salary benchmark ──────────────────────────────────────────────
+    # Salary benchmark — visueel ────────────────────────────────────
     sal = analysis.get("salary_benchmark", {}) or {}
     offered = sal.get("offered_range", "—")
     market_range = sal.get("market_range", "—")
     diff = sal.get("difference", "—")
     warning = sal.get("warning", "")
-    diff_color = RED if "onder" in (diff or "").lower() else (GREEN if "boven" in (diff or "").lower() else MUTED)
 
     sal_html = f"""
     <div class="highlight-block">
       <div class="h-label">02 &middot; Salaris benchmark</div>
       <div class="h-title">Wat bied jij — wat biedt de markt</div>
-      <div class="salary-compare">
-        <div style="border-right:1px solid {BORDER}">
-          <div class="sc-label">Jouw aanbod</div>
-          <div class="sc-val">{offered}</div>
-        </div>
-        <div>
-          <div class="sc-label">Markt</div>
-          <div class="sc-val">{market_range}</div>
-          <div class="sc-diff" style="color:{diff_color}">{diff}</div>
-        </div>
-      </div>
-      {f'<div class="sc-warn">⚠ {warning}</div>' if warning else ''}
+      {_salary_visual(offered, market_range, diff, warning)}
     </div>"""
 
-    # Top action items + kanalen ────────────────────────────────────
+    # Top action items met locked-teaser ─────────────────────────────
     action_items = analysis.get("action_items", []) or []
-    top_3 = action_items[:3]
-    actions_html = "".join(
+    visible_actions = action_items[:3]
+    locked_actions = action_items[3:4]  # 1 locked teaser — strakke layout boven content-volume
+    actions_lines = "".join(
         f'<li><div class="n">{i+1:02d}</div><div class="t">{item}</div></li>'
-        for i, item in enumerate(top_3)
+        for i, item in enumerate(visible_actions)
     )
+    actions_lines += "".join(
+        f'<li class="locked"><div class="n">{i+4:02d}</div><div class="t">{item}</div><div class="lock-tag">🔒 in volledig rapport</div></li>'
+        for i, item in enumerate(locked_actions)
+    )
+    actions_html = actions_lines
 
     channels = analysis.get("recommended_channels", []) or []
     top_2_ch = channels[:2]
@@ -390,11 +487,11 @@ def _page_highlights(analysis: dict) -> str:
 
     actions_html_block = f"""
     <div class="highlight-block">
-      <div class="h-label">03 &middot; Top 3 acties &middot; Top 2 kanalen</div>
+      <div class="h-label">03 &middot; {len(action_items)} acties &middot; Top 2 kanalen</div>
       <div class="h-title">Wat doe je als eerste</div>
       <ul class="action-list">{actions_html}</ul>
       {ch_html}
-    </div>""" if (top_3 or top_2_ch) else ""
+    </div>""" if (visible_actions or top_2_ch) else ""
 
     return f"""<section class="page">
   {_page_header()}

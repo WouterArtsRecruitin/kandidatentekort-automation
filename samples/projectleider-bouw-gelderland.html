@@ -87,7 +87,7 @@ p { margin: 0 0 8pt }
 .cover .footer-band .right { font-family: 'JetBrains Mono', monospace; font-size: 8pt; color: #6B7280; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap }
 
 /* HIGHLIGHTS PAGE ────────────────── */
-.highlight-block { padding: 11pt 14pt; border: 1px solid #E5E7EB; border-radius: 8pt; margin-bottom: 8pt; break-inside: avoid; page-break-inside: avoid }
+.highlight-block { padding: 11pt 14pt; border: 1px solid #E5E7EB; border-radius: 8pt; margin-bottom: 8pt }
 .highlight-block .h-label { font-family: 'JetBrains Mono', monospace; font-size: 8pt; font-weight: 700; color: #FF00CC; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 3pt }
 .highlight-block .h-title { font-size: 12pt; font-weight: 800; letter-spacing: -0.015em; margin-bottom: 6pt }
 
@@ -112,12 +112,12 @@ p { margin: 0 0 8pt }
 .cta-page .url { font-family: 'JetBrains Mono', monospace; font-size: 9pt; color: #6B7280; letter-spacing: 0.05em; margin-top: 10pt }
 
 /* CATEGORY BAR ────────────────────── */
-.cat-row { margin: 2pt 0 }
-.cat-row .label-row { display: table; width: 100%; margin-bottom: 2pt }
-.cat-row .name { display: table-cell; font-size: 9pt; font-weight: 600; color: #07050f; vertical-align: middle }
-.cat-row .score { display: table-cell; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 8.5pt; font-weight: 700; vertical-align: middle }
-.cat-row .track { background: #F3F4F6; border-radius: 3pt; height: 5pt; overflow: hidden }
-.cat-row .fill { height: 5pt; border-radius: 3pt }
+.cat-row { margin: 1pt 0 }
+.cat-row .label-row { display: table; width: 100%; margin-bottom: 1pt }
+.cat-row .name { display: table-cell; font-size: 8.5pt; font-weight: 600; color: #07050f; vertical-align: middle }
+.cat-row .score { display: table-cell; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 8pt; font-weight: 700; vertical-align: middle }
+.cat-row .track { background: #F3F4F6; border-radius: 2pt; height: 4pt; overflow: hidden }
+.cat-row .fill { height: 4pt; border-radius: 2pt }
 
 /* ACTION ITEMS ──────────────────── */
 .action-list { margin: 0; padding: 0; list-style: none }
@@ -134,12 +134,27 @@ p { margin: 0 0 8pt }
 .channel-row .ch-tag { font-family: 'JetBrains Mono', monospace; font-size: 8pt; font-weight: 700; color: #FF00CC; letter-spacing: 0.1em; text-transform: uppercase; text-align: right; white-space: nowrap; padding-left: 10pt; width: 90pt }
 
 /* SALARY VS MARKET ───────────────── */
-.salary-compare { display: table; width: 100%; margin-top: 4pt }
-.salary-compare > div { display: table-cell; padding: 8pt 10pt; vertical-align: top; width: 50% }
-.salary-compare .sc-label { font-family: 'JetBrains Mono', monospace; font-size: 8pt; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #6B7280; margin-bottom: 3pt }
-.salary-compare .sc-val { font-size: 12.5pt; font-weight: 800; color: #07050f; letter-spacing: -0.01em; line-height: 1.15 }
-.salary-compare .sc-diff { font-size: 9pt; font-weight: 700; margin-top: 5pt }
-.salary-compare .sc-warn { font-size: 8.5pt; color: #EF4444; margin-top: 5pt; line-height: 1.4 }
+.salary-vis { margin-top: 4pt; }
+.salary-vis .sv-track { position: relative; height: 14pt; background: #F3F4F6; border-radius: 4pt; overflow: hidden }
+.salary-vis .sv-market { position: absolute; top: 0; bottom: 0; background: rgba(255,0,204,0.18); border-left: 1.5pt solid #FF00CC; border-right: 1.5pt solid #FF00CC }
+.salary-vis .sv-offered { position: absolute; top: 2pt; bottom: 2pt; background: #FF00CC; border-radius: 2pt; box-shadow: 0 0 0 0.5pt #fff inset }
+.salary-vis .sv-scale { display: table; width: 100%; margin-top: 2pt; font-family: 'JetBrains Mono', monospace; font-size: 7pt; color: #6B7280; letter-spacing: 0.06em }
+.salary-vis .sv-scale > span { display: table-cell }
+.salary-vis .sv-scale .right { text-align: right }
+.salary-vis .sv-keys { display: table; width: 100%; margin-top: 6pt; font-size: 8pt; line-height: 1.3; border-spacing: 8pt 0 }
+.salary-vis .sv-keys > div { display: table-cell; padding: 4pt 6pt; vertical-align: top; width: 50%; background: #F5F5F5; border-radius: 4pt }
+.salary-vis .sv-keys .sv-k-lbl { font-family: 'JetBrains Mono', monospace; font-size: 7pt; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6B7280; margin-bottom: 1pt }
+.salary-vis .sv-keys .sv-k-market .sv-k-lbl::before { content: "▭ "; color: #FF00CC }
+.salary-vis .sv-keys .sv-k-offered .sv-k-lbl::before { content: "▮ "; color: #FF00CC }
+.salary-vis .sv-keys .sv-k-val { font-weight: 800; color: #07050f; font-size: 10pt; letter-spacing: -0.01em; line-height: 1.2 }
+.salary-vis .sv-keys .sv-k-diff { font-size: 7.5pt; font-weight: 700; margin-top: 1pt }
+.salary-vis .sv-warn { font-size: 8pt; color: #EF4444; margin-top: 5pt; line-height: 1.35; font-style: italic }
+
+/* ACTION-LIST locked-teaser */
+.action-list li.locked { background: rgba(255,0,204,0.04) }
+.action-list li.locked .t { color: #6B7280; font-style: italic; opacity: 0.7 }
+.action-list li.locked .n { color: #FF00CC; opacity: 0.6 }
+.action-list li.locked .lock-tag { display: table-cell; vertical-align: middle; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 7pt; font-weight: 700; color: #FF00CC; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; padding-left: 8pt; width: 88pt }
 
 /* Print color forcing */
 .kpi-grid td, .callout, .usp-grid > div, .cover .sample-banner, .cta-button, .highlight-block, .cat-row .fill, .salary-compare > div { -webkit-print-color-adjust: exact; print-color-adjust: exact }
@@ -256,24 +271,35 @@ p { margin: 0 0 8pt }
     <div class="highlight-block">
       <div class="h-label">02 &middot; Salaris benchmark</div>
       <div class="h-title">Wat bied jij — wat biedt de markt</div>
-      <div class="salary-compare">
-        <div style="border-right:1px solid #E5E7EB">
-          <div class="sc-label">Jouw aanbod</div>
-          <div class="sc-val">€5.500 - €7.200</div>
+      
+    <div class="salary-vis">
+      <div class="sv-track">
+        <div class="sv-market" style="left:61.9%;width:18.1%"></div>
+        <div class="sv-offered" style="left:58.7%;width:18.1%"></div>
+      </div>
+      <div class="sv-scale">
+        <span>€0k</span>
+        <span class="right">€9k</span>
+      </div>
+      <div class="sv-keys">
+        <div class="sv-k-market">
+          <div class="sv-k-lbl">Markt</div>
+          <div class="sv-k-val">€5.800 - €7.500</div>
         </div>
-        <div>
-          <div class="sc-label">Markt</div>
-          <div class="sc-val">€5.800 - €7.500</div>
-          <div class="sc-diff" style="color:#EF4444">-3% onder markt (mediaan)</div>
+        <div class="sv-k-offered">
+          <div class="sv-k-lbl">Jouw aanbod</div>
+          <div class="sv-k-val">€5.500 - €7.200</div>
+          <div class="sv-k-diff" style="color:#EF4444">-3% onder markt (mediaan)</div>
         </div>
       </div>
       
     </div>
+    </div>
   
     <div class="highlight-block">
-      <div class="h-label">03 &middot; Top 3 acties &middot; Top 2 kanalen</div>
+      <div class="h-label">03 &middot; 5 acties &middot; Top 2 kanalen</div>
       <div class="h-title">Wat doe je als eerste</div>
-      <ul class="action-list"><li><div class="n">01</div><div class="t">Voeg een 'Over ons' sectie toe met 3 concrete cijfers (omzet, FTE, opgeleverde projecten/jaar)</div></li><li><div class="n">02</div><div class="t">Wijzig CTA naar persoonlijke contactopname (naam + telefoon + LinkedIn van hiring manager)</div></li><li><div class="n">03</div><div class="t">Voeg portfolio-link toe — projectleiders willen zien wat ze gaan bouwen</div></li></ul>
+      <ul class="action-list"><li><div class="n">01</div><div class="t">Voeg een 'Over ons' sectie toe met 3 concrete cijfers (omzet, FTE, opgeleverde projecten/jaar)</div></li><li><div class="n">02</div><div class="t">Wijzig CTA naar persoonlijke contactopname (naam + telefoon + LinkedIn van hiring manager)</div></li><li><div class="n">03</div><div class="t">Voeg portfolio-link toe — projectleiders willen zien wat ze gaan bouwen</div></li><li class="locked"><div class="n">04</div><div class="t">Specificeer auto-regeling (lease-categorie of budget) — nu staat alleen 'auto van de zaak'</div><div class="lock-tag">🔒 in volledig rapport</div></li></ul>
       
         <div class="channel-row">
           <div>
